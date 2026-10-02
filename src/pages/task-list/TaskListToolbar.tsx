@@ -24,6 +24,7 @@ import { useCallback, useMemo } from 'react';
 
 import type { NormalizedTask } from '@/domain/types';
 import { isTaskRetryable } from '@/domain/normalize';
+import { hasEd2kLink } from '@/domain/ed2k';
 import { Aria2TaskStatus, TaskListKind, isTerminalStatus } from '@/config/rpc-constants';
 import type { AfterRetryingTask } from '@/config/types';
 import { useTranslate } from '@/i18n/react';
@@ -132,9 +133,13 @@ export function selectedTasksHaveInfoHash(tasks: readonly NormalizedTask[]): boo
   return tasks.length > 0 && tasks.every((task) => !!task.bittorrent && !!task.infoHash);
 }
 
-/** aria2-next: every selected task is an eDonkey2000 download with its link. */
+/**
+ * aria2-next: every selected task is an ED2K download with a reconstructable
+ * link. `tellStatus().ed2k` carries no `ed2kLink`, so the link is rebuilt from
+ * the `name` / `length` / `hash` triple it does report.
+ */
 export function selectedTasksHaveEd2kLink(tasks: readonly NormalizedTask[]): boolean {
-  return tasks.length > 0 && tasks.every((task) => !!task.ed2k?.ed2kLink);
+  return tasks.length > 0 && tasks.every((task) => hasEd2kLink(task.ed2k));
 }
 
 /* ------------------------------------------------------------------ */
@@ -449,10 +454,11 @@ export function TaskListToolbar({ kind, actions: provided }: TaskListToolbarProp
   const list = useTasksStore((state) => state.list);
   const searchText = useTasksStore((state) => state.searchText);
 
+  // `filtered()` reads the list + search text out of the tasks store; subscribing
+  // to both keeps the memo honest without re-implementing the filter here.
   const visible = useMemo(
     () => useTasksStore.getState().filtered(),
-    // `filtered()` reads the list + search text out of the store; both are
-    // already dependencies here, which is what keeps the memo honest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [list, searchText],
   );
 

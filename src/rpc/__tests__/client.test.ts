@@ -2,7 +2,7 @@
  * `Aria2ClientImpl` unit tests.
  *
  * The client is exercised against a scripted websocket mock so that request
- * construction (secret, option bags, `system.multicall` tuples) can be asserted
+ * construction (secret, option bags, `system.multicall` structs) can be asserted
  * on the *wire frames*, and against fake timers for the reconnect state machine.
  */
 
@@ -192,14 +192,41 @@ describe('aria2 client — request construction', () => {
     expect(socket.sent[0].params).toEqual(['gid-1', { 'select-file': '1,3,5' }]);
   });
 
-  it('buildCall returns a system.multicall tuple, not an object', () => {
+  it('buildCall returns a system.multicall struct', () => {
+    // NOT a `[method, params]` tuple. aria2-next's
+    // SystemMulticallRpcMethod::execute does `downcast<Dict>(methodSpec)` and
+    // answers "system.multicall expected struct." for anything else, so a tuple
+    // would fail every entry of every multicall we send.
     const { client } = createClient({ secret: 'sekret' });
 
-    expect(client.buildCall({ method: 'tellStatus', params: ['gid-1'] })).toEqual([
-      'aria2.tellStatus',
-      ['token:sekret', 'gid-1'],
+    expect(client.buildCall({ method: 'tellStatus', params: ['gid-1'] })).toEqual({
+      methodName: 'aria2.tellStatus',
+      params: ['token:sekret', 'gid-1'],
+    });
+    expect(client.buildCall({ method: 'system.multicall' })).toEqual({
+      methodName: 'system.multicall',
+      params: [],
+    });
+  });
+
+  it('multicall sends an array of structs as the single argument', async () => {
+    const { client, socket } = createClient({ secret: 'sekret' });
+    socket.open();
+
+    void client.multicall([
+      { method: 'tellStatus', params: ['gid-1'], silent: true },
+      { method: 'getOption', params: ['gid-1'], silent: true },
     ]);
-    expect(client.buildCall({ method: 'system.multicall' })).toEqual(['system.multicall', []]);
+
+    const sent = socket.sent[0];
+    expect(sent.method).toBe('system.multicall');
+    // The outer system.* call carries no token; each inner entry carries its own.
+    expect(sent.params).toEqual([
+      [
+        { methodName: 'aria2.tellStatus', params: ['token:sekret', 'gid-1'] },
+        { methodName: 'aria2.getOption', params: ['token:sekret', 'gid-1'] },
+      ],
+    ]);
   });
 
   it('addUriMany collects gids in request order', async () => {

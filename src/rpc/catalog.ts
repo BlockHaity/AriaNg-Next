@@ -271,6 +271,14 @@ export const RPC_METHOD_CATALOG: readonly RpcMethodMeta[] = withFullNames([
     aria2NextOnly: true,
     summary: 'Force a full recheck of the pieces of a BitTorrent download.',
   },
+  {
+    // Documented in the aria2-next manual (docs/manual/en/aria2-next.rst) but
+    // absent from upstream aria2, which is why it is aria2-next only.
+    name: 'setBtPeerBlocklist',
+    service: RPC_SERVICE_NAME,
+    aria2NextOnly: true,
+    summary: 'Replace the BitTorrent peer blocklist with the given rules.',
+  },
 
   /* ---- aria2-next: native media ---- */
   {

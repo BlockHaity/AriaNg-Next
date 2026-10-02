@@ -27,6 +27,7 @@ import type {
   Aria2Client,
   BatchOutcome,
   ConnectionState,
+  MulticallEntry,
   RpcError,
   RpcEventPayload,
   RpcRequestContext,
@@ -223,13 +224,13 @@ export class Aria2ClientImpl implements Aria2Client {
   /* raw invocation                                                    */
   /* ================================================================ */
 
-  buildCall(context: RpcRequestContext): [string, unknown[]] {
+  buildCall(context: RpcRequestContext): MulticallEntry {
     return this.#buildCall(context);
   }
 
   async invoke<T = unknown>(context: RpcRequestContext): Promise<RpcResult<T>> {
-    const [method, params] = this.#buildCall(context);
-    return this.#sendRequest<T>(context, method, params);
+    const { methodName, params } = this.#buildCall(context);
+    return this.#sendRequest<T>(context, methodName, params);
   }
 
   /**
@@ -470,6 +471,10 @@ export class Aria2ClientImpl implements Aria2Client {
     return this.invoke<string>({ method: 'forceBtRecheck', params: [gid] });
   }
 
+  setBtPeerBlocklist(rules: string[]): Promise<RpcResult<string>> {
+    return this.invoke<string>({ method: 'setBtPeerBlocklist', params: [rules] });
+  }
+
   /* ================================================================ */
   /* aria2-next: media                                                */
   /* ================================================================ */
@@ -577,11 +582,33 @@ export class Aria2ClientImpl implements Aria2Client {
   /* ================================================================ */
 
   /**
-   * `[fullMethodName, params]` — the exact tuple aria2's `system.multicall`
-   * expects.  This is also the single place where the secret is injected, so a
-   * multicall entry is self-contained.
+   * A `system.multicall` entry: `{ methodName, params }`.
+   *
+   * Verified against aria2-next's own implementation,
+   * `src/rpc/SystemMethods.cc` (`SystemMulticallRpcMethod::execute`):
+   *
+   * ```cpp
+   * Dict* methodDict = downcast<Dict>(methodSpec);
+   * if (!methodDict) {
+   *   list->append(createErrorResponse(
+   *       DL_ABORT_EX("system.multicall expected struct."), req));
+   *   continue;
+   * }
+   * const String* methodName = downcast<String>(methodDict->get(KEY_METHOD_NAME));
+   * ```
+   *
+   * Each element must therefore be a **struct** carrying `methodName` and
+   * `params`; a `[method, params]` tuple is rejected per entry with
+   * "system.multicall expected struct.". `tests/rpc/SystemMethodsTest.cc` asserts
+   * exactly that error for a non-struct element, and upstream aria2 parses the
+   * same way. AriaNg got this right by accident — it serialised its request
+   * context objects and `JSON.stringify` dropped the function properties,
+   * leaving precisely `{methodName, params}`.
+   *
+   * This is also the single place where the secret is injected, so a multicall
+   * entry is self-contained.
    */
-  #buildCall(context: RpcRequestContext): [string, unknown[]] {
+  #buildCall(context: RpcRequestContext): MulticallEntry {
     const method = qualifyMethod(context.method);
     const args = dropTrailingEmpty((context.params ?? []).slice());
 
@@ -594,7 +621,7 @@ export class Aria2ClientImpl implements Aria2Client {
     }
     params.push(...args);
 
-    return [method, params];
+    return { methodName: method, params };
   }
 
   #sendRequest<T>(context: RpcRequestContext, method: string, params: unknown[]): Promise<RpcResult<T>> {

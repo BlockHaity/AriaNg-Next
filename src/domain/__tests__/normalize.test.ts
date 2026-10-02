@@ -7,6 +7,7 @@ import type {
   Aria2Media,
   Aria2TaskStatusResult,
 } from '@/rpc/types';
+import { buildEd2kLink } from '../ed2k';
 import {
   calculateRemainTime,
   computeShareRatio,
@@ -300,27 +301,34 @@ function buildMediaHls(): TaskFixture {
 }
 
 function buildEd2k(): TaskFixture {
+  // Field names transcribed from the aria2-next manual's `ed2k` struct. Note it
+  // carries **no** `ed2kLink` — that exists only on search results, which is why
+  // the ED2K link has to be reconstructed (see `domain/ed2k.ts`).
   const ed2k: Aria2Ed2k = {
     hash: '31D6CFE0D16AE931B73C59D7E0C089C0',
     name: 'movie.avi',
-    fileLength: '734003200',
-    ed2kLink: 'ed2k://|file|movie.avi|734003200|31D6CFE0D16AE931B73C59D7E0C089C0|/',
-    numPieces: '512',
-    numServers: '5',
-    connectedServers: '2',
-    numPeers: '30',
-    numPeersWithUploadQueueRank: '10',
-    numPeersWithUploadRequest: '3',
-    numPeersInRetryBackoff: '1',
-    lowIdPeers: '4',
-    lowIdPeersWaitingForServerCallback: '2',
-    searching: false,
+    length: '734003200',
+    partHashCount: '512',
+    aichRoot: 'ABCDEF0123456789',
+    serverCount: '5',
+    connectedServerCount: '2',
+    peerCount: '30',
+    queuedPeerCount: '10',
+    acceptedPeerCount: '3',
+    deadPeerCount: '1',
+    lowIdPeerCount: '4',
+    callbackWaitingPeerCount: '2',
+    kadNodeCount: '9',
+    kadRouterCount: '2',
+    kadFirewalled: false,
+    kadObservedAddressCount: '3',
+    searchActive: false,
     searchMoreResults: true,
     searchResultCount: '120',
-    shareSeconds: '3600',
-    uploadSlotsUsed: '3',
-    uploadQueuePeers: '7',
-    uploadQueuePeerCreditCount: '1',
+    sharingTime: '3600',
+    uploadingPeerCount: '3',
+    waitingUploadPeerCount: '7',
+    peerCreditCount: '1',
   };
 
   return {
@@ -723,25 +731,37 @@ describe('normalizeTask — ED2K task', () => {
     expect(ed2k).toEqual({
       hash: '31D6CFE0D16AE931B73C59D7E0C089C0',
       name: 'movie.avi',
-      fileLength: 734003200,
-      ed2kLink: 'ed2k://|file|movie.avi|734003200|31D6CFE0D16AE931B73C59D7E0C089C0|/',
-      numPieces: 512,
-      numServers: 5,
-      connectedServers: 2,
-      numPeers: 30,
-      numPeersWithUploadQueueRank: 10,
-      numPeersWithUploadRequest: 3,
-      numPeersInRetryBackoff: 1,
-      lowIdPeers: 4,
-      lowIdPeersWaitingForServerCallback: 2,
-      searching: false,
+      length: 734003200,
+      partHashCount: 512,
+      aichRoot: 'ABCDEF0123456789',
+      serverCount: 5,
+      connectedServerCount: 2,
+      peerCount: 30,
+      queuedPeerCount: 10,
+      acceptedPeerCount: 3,
+      deadPeerCount: 1,
+      lowIdPeerCount: 4,
+      callbackWaitingPeerCount: 2,
+      kadNodeCount: 9,
+      kadRouterCount: 2,
+      // Real booleans on the wire, not 'true'/'false' strings.
+      kadFirewalled: false,
+      kadObservedAddressCount: 3,
+      searchActive: false,
       searchMoreResults: true,
       searchResultCount: 120,
-      shareSeconds: 3600,
-      uploadSlotsUsed: 3,
-      uploadQueuePeers: 7,
-      uploadQueuePeerCreditCount: 1,
+      sharingTime: 3600,
+      uploadingPeerCount: 3,
+      waitingUploadPeerCount: 7,
+      peerCreditCount: 1,
     });
+  });
+
+  it('lets the ED2K link be rebuilt from the identity triple', () => {
+    const { raw } = guard(buildEd2k());
+    expect(buildEd2kLink(normalizeTask(raw).ed2k)).toBe(
+      'ed2k://|file|movie.avi|734003200|31D6CFE0D16AE931B73C59D7E0C089C0|/',
+    );
   });
 });
 

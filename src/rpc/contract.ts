@@ -50,6 +50,21 @@ export interface RpcFailure {
 
 export type RpcResult<T> = RpcSuccess<T> | RpcFailure;
 
+/**
+ * One entry of a `system.multicall` request.
+ *
+ * **A struct, not a `[method, params]` tuple.** aria2-next's
+ * `SystemMulticallRpcMethod::execute` (`src/rpc/SystemMethods.cc`) does
+ * `downcast<Dict>(methodSpec)` and returns
+ * `"system.multicall expected struct."` for every element that is not a struct
+ * carrying `methodName` and `params`. `tests/rpc/SystemMethodsTest.cc` pins that
+ * error, and upstream aria2 parses the payload identically.
+ */
+export interface MulticallEntry {
+  methodName: string;
+  params: unknown[];
+}
+
 /** Basic task fields — enough to render the list without heavy payloads. */
 export const BASIC_TASK_PARAMS = [
   'gid',
@@ -114,8 +129,14 @@ export interface Aria2Client {
 
   /* ---- raw invocation ---- */
   invoke<T = unknown>(context: RpcRequestContext): Promise<RpcResult<T>>;
-  /** Builds a `system.multicall` payload without sending it. */
-  buildCall(context: RpcRequestContext): [string, unknown[]];
+  /**
+   * Builds one `system.multicall` entry without sending it.
+   *
+   * The entry is a **struct**, not a tuple: aria2-next's
+   * `SystemMulticallRpcMethod::execute` does `downcast<Dict>(methodSpec)` and
+   * answers "system.multicall expected struct." for anything else.
+   */
+  buildCall(context: RpcRequestContext): MulticallEntry;
 
   /* ---- task lifecycle ---- */
   addUri(urls: string[], options?: Aria2OptionMap, position?: string): Promise<RpcResult<string>>;
@@ -180,6 +201,8 @@ export interface Aria2Client {
   addBtPeers(gid: string, peers: string[]): Promise<RpcResult<string>>;
   getBtSessionStatus(): Promise<RpcResult<unknown>>;
   forceBtRecheck(gid: string): Promise<RpcResult<string>>;
+  /** aria2-next only: replace the BitTorrent peer blocklist. */
+  setBtPeerBlocklist(rules: string[]): Promise<RpcResult<string>>;
 
   /* ---- aria2-next: media ---- */
   finishMedia(gid: string): Promise<RpcResult<string>>;

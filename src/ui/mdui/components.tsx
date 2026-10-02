@@ -17,8 +17,8 @@
  *    functions) go through `useMduiProperty` / `useMduiModel` instead.
  */
 
-import { createElement, useCallback, useEffect, useRef } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import { cloneElement, createElement, useCallback, useEffect, useRef } from 'react';
+import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { useMduiEvent, useMduiModel, useMduiProperty } from './use-mdui';
 import { hasIcon, icon } from './icons';
 
@@ -1322,7 +1322,18 @@ export interface MduiDropdownProps extends Styleable {
   open?: boolean;
 }
 
-/** `<mdui-dropdown>`; `open` is a JS property, so it is driven imperatively. */
+/**
+ * `<mdui-dropdown>`; `open` is a JS property, so it is driven imperatively.
+ *
+ * The trigger **must** carry `slot="trigger"`. mdui resolves it with
+ * `this.querySelector('[slot="trigger"]')` and then calls
+ * `getOverflowAncestors(...)` on the result, so a plain child leaves it
+ * `undefined` and the component throws from its first update.
+ *
+ * `cloneElement` is used rather than requiring callers to set the slot
+ * themselves, because `MduiButton` has no `slot` prop and React cannot add the
+ * attribute to an arbitrary `ReactNode` in place.
+ */
 export function MduiDropdown(props: MduiDropdownProps) {
   const { trigger, items, placement, openDelay, closeDelay, open, className, style } = props;
   const ref = useRef<Dropdown>(null);
@@ -1338,7 +1349,7 @@ export function MduiDropdown(props: MduiDropdownProps) {
       close-delay={closeDelay}
       trigger="click"
     >
-      {trigger}
+      {cloneElement(trigger as ReactElement, { slot: 'trigger' })}
       {items}
     </mdui-dropdown>
   );

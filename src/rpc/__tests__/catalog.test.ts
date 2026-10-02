@@ -52,6 +52,8 @@ const EXPECTED_BARE_NAMES = [
   'addBtPeers',
   'getBtSessionStatus',
   'forceBtRecheck',
+  // aria2-next only: documented in the manual, absent from upstream aria2.
+  'setBtPeerBlocklist',
   'finishMedia',
   'retryMedia',
   'resolveFilename',
@@ -74,6 +76,7 @@ const EXPECTED_DESTRUCTIVE = [
 const EXPECTED_ARIA2_NEXT_ONLY = [
   'inspectTorrent',
   'forceBtRecheck',
+  'setBtPeerBlocklist',
   'finishMedia',
   'retryMedia',
   'resolveFilename',

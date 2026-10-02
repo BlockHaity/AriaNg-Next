@@ -18,7 +18,7 @@
  * | 11 | *(divider)*          | a copy item is available |
  * | 12 | Copy Download Url    | **every** selected task has a `singleUrl` |
  * | 13 | Copy Magnet Link     | **every** selected task is a torrent with an `infoHash` |
- * | +  | Copy ED2K Link       | aria2-next: **every** selected task has `ed2k.ed2kLink` |
+ * | +  | Copy ED2K Link       | aria2-next: **every** selected task has a reconstructable ED2K link |
  *
  * ## How it is hosted
  *
@@ -35,6 +35,7 @@ import type { ReactNode } from 'react';
 
 import type { NormalizedTask } from '@/domain/types';
 import { isTaskRetryable } from '@/domain/normalize';
+import { buildEd2kLink } from '@/domain/ed2k';
 import { Aria2TaskStatus } from '@/config/rpc-constants';
 import type { TaskListKind } from '@/config/rpc-constants';
 import { useTranslate } from '@/i18n/react';
@@ -100,7 +101,10 @@ function ContextMenuItem({ icon, title, selected = false, onClick, children }: C
   useMduiEvent(ref, 'click', () => onClick());
 
   return (
-    <mdui-menu-item ref={ref} icon={icon} title={title} aria-selected={selected}>
+    // `aria-selected` as a string: React writes a boolean onto a custom element as
+    // a property, which serialises to `aria-selected=""` and tells a screen reader
+    // nothing.
+    <mdui-menu-item ref={ref} icon={icon} title={title} aria-selected={selected ? 'true' : 'false'}>
       {children}
     </mdui-menu-item>
   );
@@ -128,7 +132,13 @@ export function TaskContextMenu({ kind, actions: provided }: TaskContextMenuProp
   const searchText = useTasksStore((state) => state.searchText);
   const order = useSettingsStore((state) => state.resolveDisplayOrder(kind));
 
-  const visible = useMemo(() => useSelectionStore.getState().visible(), [list, searchText]);
+  // `visible()` reads the list + search text out of the tasks store; subscribing to
+  // both keeps the memo honest without re-deriving the filter here.
+  const visible = useMemo(
+    () => useSelectionStore.getState().visible(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [list, searchText],
+  );
   const selectedTasks = useMemo(
     () => visible.filter((task) => selectedRecord[task.gid] === true),
     [visible, selectedRecord],
@@ -159,7 +169,9 @@ export function TaskContextMenu({ kind, actions: provided }: TaskContextMenuProp
   }, []);
 
   const copyEd2kLinks = useCallback(() => {
-    const text = joinLinks(useSelectionStore.getState().selectedTasks(), (task) => task.ed2k?.ed2kLink ?? '');
+    // `task.ed2k` has no `ed2kLink` field (it exists only on search results), so
+    // the link is reconstructed from the identity triple aria2-next does report.
+    const text = joinLinks(useSelectionStore.getState().selectedTasks(), (task) => buildEd2kLink(task.ed2k) ?? '');
     if (text) {
       void copyText(text);
     }

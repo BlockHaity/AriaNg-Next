@@ -106,27 +106,41 @@ export interface TaskMediaView {
   tracks: MediaTrackView[];
 }
 
+/**
+ * Render-ready ED2K state. Field names mirror the aria2-next manual's `ed2k`
+ * struct verbatim, with decimal strings coerced to numbers and the two real
+ * booleans (`kadFirewalled`, `searchActive`) left as booleans.
+ */
 export interface TaskEd2kView {
   hash?: string;
   name?: string;
-  fileLength?: number;
-  ed2kLink?: string;
-  numPieces?: number;
-  numServers?: number;
-  connectedServers?: number;
-  numPeers?: number;
-  numPeersWithUploadQueueRank?: number;
-  numPeersWithUploadRequest?: number;
-  numPeersInRetryBackoff?: number;
-  lowIdPeers?: number;
-  lowIdPeersWaitingForServerCallback?: number;
-  searching?: boolean;
+  length?: number;
+  partHashCount?: number;
+  aichRoot?: string;
+
+  serverCount?: number;
+  connectedServerCount?: number;
+
+  peerCount?: number;
+  queuedPeerCount?: number;
+  acceptedPeerCount?: number;
+  deadPeerCount?: number;
+  lowIdPeerCount?: number;
+  callbackWaitingPeerCount?: number;
+
+  kadNodeCount?: number;
+  kadRouterCount?: number;
+  kadFirewalled?: boolean;
+  kadObservedAddressCount?: number;
+
+  searchActive?: boolean;
   searchMoreResults?: boolean;
   searchResultCount?: number;
-  shareSeconds?: number;
-  uploadSlotsUsed?: number;
-  uploadQueuePeers?: number;
-  uploadQueuePeerCreditCount?: number;
+
+  sharingTime?: number;
+  uploadingPeerCount?: number;
+  waitingUploadPeerCount?: number;
+  peerCreditCount?: number;
 }
 
 export interface TaskBittorrentView {

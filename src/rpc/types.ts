@@ -131,28 +131,54 @@ export interface Aria2Media {
   input?: Aria2MediaInput;
 }
 
-/** aria2-next ED2K/eMule state. */
+/**
+ * aria2-next ED2K/eMule state, as reported in `tellStatus().ed2k`.
+ *
+ * Field names are transcribed from the literal keys of the aria2-next manual's
+ * `ed2k` struct (docs/manual/en/aria2-next.rst) — **not** inferred from its
+ * prose descriptions. Numeric values are decimal strings; `kadFirewalled` and
+ * `searchActive` are real booleans. Present for active ED2K downloads and for
+ * ED2K search tasks.
+ */
 export interface Aria2Ed2k {
+  /** ED2K file hash as lowercase hexadecimal. */
   hash?: string;
   name?: string;
-  fileLength?: string;
-  ed2kLink?: string;
-  numPieces?: string;
-  numServers?: string;
-  connectedServers?: string;
-  numPeers?: string;
-  numPeersWithUploadQueueRank?: string;
-  numPeersWithUploadRequest?: string;
-  numPeersInRetryBackoff?: string;
-  lowIdPeers?: string;
-  lowIdPeersWaitingForServerCallback?: string;
-  searching?: boolean;
+  /** File length in bytes. */
+  length?: string;
+  /** Number of known MD4 part hashes. */
+  partHashCount?: string;
+  /** AICH root hash, when the file has one. */
+  aichRoot?: string;
+
+  serverCount?: string;
+  connectedServerCount?: string;
+
+  peerCount?: string;
+  /** Peers currently reporting an upload queue rank. */
+  queuedPeerCount?: string;
+  /** Peers that accepted an upload request. */
+  acceptedPeerCount?: string;
+  deadPeerCount?: string;
+  lowIdPeerCount?: string;
+  /** LowID peers still waiting for a server callback. */
+  callbackWaitingPeerCount?: string;
+
+  kadNodeCount?: string;
+  kadRouterCount?: string;
+  kadFirewalled?: boolean;
+  kadObservedAddressCount?: string;
+
+  /** True while this task is an ED2K search. */
+  searchActive?: boolean;
   searchMoreResults?: boolean;
   searchResultCount?: string;
-  shareSeconds?: string;
-  uploadSlotsUsed?: string;
-  uploadQueuePeers?: string;
-  uploadQueuePeerCreditCount?: string;
+
+  /** Whole seconds this completed task has actively shared. */
+  sharingTime?: string;
+  uploadingPeerCount?: string;
+  waitingUploadPeerCount?: string;
+  peerCreditCount?: string;
 }
 
 export interface Aria2TaskStatusResult {
@@ -232,14 +258,37 @@ export interface Aria2FileAllocation {
 export type Aria2OptionValue = string;
 export type Aria2OptionMap = Record<string, Aria2OptionValue>;
 
-/** aria2-next `aria2.ed2kSearch` / `aria2.getEd2kSearchResults`. */
+/**
+ * One entry of `aria2.getEd2kSearchResults().results`.
+ *
+ * Field names are transcribed verbatim from the aria2-next manual, which lists
+ * them as: `hash`, `name`, `length`, `sourceCount`, `completeSourceCount`,
+ * `fileType`, `extension`, `mediaArtist`, `mediaAlbum`, `mediaTitle`,
+ * `mediaLength`, `mediaBitrate`, `mediaCodec`, `sourceNetwork`, `ed2kLink`.
+ * Numeric values are decimal strings.
+ *
+ * Only `ed2kLink` can be handed to `aria2.addUri`, and a hit may arrive without
+ * one while its metadata is still being resolved — hence every other field is
+ * optional and `ed2kLink` is only *expected*, not guaranteed.
+ */
 export interface Aria2Ed2kSearchResult {
-  ed2kLink: string;
-  filename?: string;
-  fileLength?: string;
-  fileHash?: string;
+  hash?: string;
+  name?: string;
+  /** File length in bytes, as a decimal string. */
+  length?: string;
+  /** How many sources reported this file. */
+  sourceCount?: string;
+  completeSourceCount?: string;
+  fileType?: string;
+  extension?: string;
+  mediaArtist?: string;
+  mediaAlbum?: string;
+  mediaTitle?: string;
+  mediaLength?: string;
+  mediaBitrate?: string;
   mediaCodec?: string;
   sourceNetwork?: string;
+  ed2kLink?: string;
 }
 
 export interface Aria2Ed2kSearchState {

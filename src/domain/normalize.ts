@@ -283,28 +283,38 @@ function normalizeMedia(media: Aria2Media): TaskMediaView {
 }
 
 function normalizeEd2k(ed2k: Aria2Ed2k): TaskEd2kView {
+  // Field names mirror the aria2-next manual's `ed2k` struct verbatim.
   return {
     hash: ed2k.hash,
     name: ed2k.name,
-    fileLength: optionalInt(ed2k.fileLength),
-    ed2kLink: ed2k.ed2kLink,
-    numPieces: optionalInt(ed2k.numPieces),
-    numServers: optionalInt(ed2k.numServers),
-    connectedServers: optionalInt(ed2k.connectedServers),
-    numPeers: optionalInt(ed2k.numPeers),
-    numPeersWithUploadQueueRank: optionalInt(ed2k.numPeersWithUploadQueueRank),
-    numPeersWithUploadRequest: optionalInt(ed2k.numPeersWithUploadRequest),
-    numPeersInRetryBackoff: optionalInt(ed2k.numPeersInRetryBackoff),
-    lowIdPeers: optionalInt(ed2k.lowIdPeers),
-    lowIdPeersWaitingForServerCallback: optionalInt(ed2k.lowIdPeersWaitingForServerCallback),
-    // These three are real booleans on the wire, not `'true'`/`'false'`.
-    searching: ed2k.searching,
+    length: optionalInt(ed2k.length),
+    partHashCount: optionalInt(ed2k.partHashCount),
+    aichRoot: ed2k.aichRoot,
+
+    serverCount: optionalInt(ed2k.serverCount),
+    connectedServerCount: optionalInt(ed2k.connectedServerCount),
+
+    peerCount: optionalInt(ed2k.peerCount),
+    queuedPeerCount: optionalInt(ed2k.queuedPeerCount),
+    acceptedPeerCount: optionalInt(ed2k.acceptedPeerCount),
+    deadPeerCount: optionalInt(ed2k.deadPeerCount),
+    lowIdPeerCount: optionalInt(ed2k.lowIdPeerCount),
+    callbackWaitingPeerCount: optionalInt(ed2k.callbackWaitingPeerCount),
+
+    kadNodeCount: optionalInt(ed2k.kadNodeCount),
+    kadRouterCount: optionalInt(ed2k.kadRouterCount),
+    kadFirewalled: ed2k.kadFirewalled,
+    kadObservedAddressCount: optionalInt(ed2k.kadObservedAddressCount),
+
+    // Real booleans on the wire, not `'true'` / `'false'` strings.
+    searchActive: ed2k.searchActive,
     searchMoreResults: ed2k.searchMoreResults,
     searchResultCount: optionalInt(ed2k.searchResultCount),
-    shareSeconds: optionalInt(ed2k.shareSeconds),
-    uploadSlotsUsed: optionalInt(ed2k.uploadSlotsUsed),
-    uploadQueuePeers: optionalInt(ed2k.uploadQueuePeers),
-    uploadQueuePeerCreditCount: optionalInt(ed2k.uploadQueuePeerCreditCount),
+
+    sharingTime: optionalInt(ed2k.sharingTime),
+    uploadingPeerCount: optionalInt(ed2k.uploadingPeerCount),
+    waitingUploadPeerCount: optionalInt(ed2k.waitingUploadPeerCount),
+    peerCreditCount: optionalInt(ed2k.peerCreditCount),
   };
 }
 
