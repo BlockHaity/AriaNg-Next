@@ -12,32 +12,62 @@ import { createRef, useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { shallowEqual, useMduiDefined, useMduiEvent, useMduiImperative, useMduiModel, useMduiProperty } from '../mdui/use-mdui';
+import {
+  shallowEqual,
+  useMduiDefined,
+  useMduiEvent,
+  useMduiImperative,
+  useMduiModel,
+  useMduiProperty,
+} from '../mdui/use-mdui';
 
-/* -------------------------------------------------------------------------- */
-/* test doubles                                                               */
-/* -------------------------------------------------------------------------- */
+import type * as ReactTypes from 'react';
 
-/** Counts live listeners so re-subscription can be detected. */
-interface Probe extends HTMLElement {
-  addEventListener: HTMLElement['addEventListener'];
+// `<x-probe />` in TSX. Merged into the same `React.JSX.IntrinsicElements` that
+// `mdui/jsx.en.d.ts` augments — interfaces merge, so both sets coexist.
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace React {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace JSX {
+      interface IntrinsicElements {
+        'x-probe': ReactTypes.DetailedHTMLProps<ReactTypes.HTMLAttributes<HTMLElement>, HTMLElement>;
+      }
+    }
+  }
 }
+
+/* -------------------------------------------------------------------------- */
+/* test double                                                                */
+/* -------------------------------------------------------------------------- */
+
+/** The surface the tests rely on, mirroring what mdui's elements expose. */
+interface Probe extends HTMLElement {
+  value: string | string[];
+  checked: boolean;
+  /** JS-only property: mdui has no attribute form for functions. */
+  labelFormatter?: (value: number) => string;
+  /** Mimics an mdui `CustomEvent`. */
+  emit(name: string, detail?: unknown): void;
+  /** Mimics the element changing its own value and announcing it. */
+  userSet(next: string | string[]): void;
+  /** Mimics a checkbox being toggled. */
+  userCheck(next: boolean): void;
+}
+
+/** Counts live subscriptions so re-subscription can be detected. */
 let addCalls = 0;
 let removeCalls = 0;
 
 class ProbeElement extends HTMLElement {
-  static get observedAttributes(): string[] {
-    return [];
-  }
-
   private _value: string | string[] = '';
   private _checked = false;
-  /** Mirrors what mdui does for JS-only properties: no attribute reflection. */
   labelFormatter?: (value: number) => string;
 
+  // Signature copied verbatim from `lib.dom.d.ts` so the override type-checks.
   override addEventListener(
     type: string,
-    listener: EventListenerOrEventListenerObject | null,
+    listener: EventListenerOrEventListenerObject,
     options?: boolean | AddEventListenerOptions,
   ): void {
     addCalls += 1;
@@ -46,7 +76,7 @@ class ProbeElement extends HTMLElement {
 
   override removeEventListener(
     type: string,
-    listener: EventListenerOrEventListenerObject | null,
+    listener: EventListenerOrEventListenerObject,
     options?: boolean | EventListenerOptions,
   ): void {
     removeCalls += 1;
@@ -69,12 +99,10 @@ class ProbeElement extends HTMLElement {
     this._checked = next;
   }
 
-  /** Mimics a user interacting with the element. */
   emit(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true }));
   }
 
-  /** Mimics an element-driven state change followed by its event. */
   userSet(next: string | string[]): void {
     this.value = next;
     this.emit('change');
@@ -90,24 +118,19 @@ if (!customElements.get('x-probe')) {
   customElements.define('x-probe', ProbeElement);
 }
 
-function createProbe(): Probe {
-  return document.createElement('x-probe') as Probe;
-}
-
 /**
  * Mounts a probe element and returns it, so the event tests can dispatch real
  * `CustomEvent`s against a live custom element.
  */
-function renderWithProbe(children: (ref: RefObject<HTMLElement | null>) => ReactNode) {
-  const ref = createRef<HTMLElement>();
+function renderWithProbe(children: (ref: RefObject<Probe | null>) => ReactNode) {
+  const ref = createRef<Probe>();
 
   function Host() {
     return <>{children(ref)}</>;
   }
 
   const view = render(<Host />);
-  const element = ref.current as Probe;
-  return { element, view };
+  return { element: ref.current as Probe, view };
 }
 
 afterEach(() => {
@@ -170,13 +193,13 @@ describe('useMduiEvent', () => {
     const first = vi.fn();
     const second = vi.fn();
 
-    function Probe({ handler }: { handler: (detail: unknown) => void }) {
-      const ref = useRef<HTMLElement>(null);
+    function Host({ handler }: { handler: (detail: unknown) => void }) {
+      const ref = useRef<Probe>(null);
       useMduiEvent(ref, 'change', handler);
       return <x-probe ref={ref} />;
     }
 
-    const view = render(<Probe handler={first} />);
+    const view = render(<Host handler={first} />);
     const element = document.querySelector('x-probe') as Probe;
     const addsAfterMount = addCalls;
 
@@ -186,9 +209,15 @@ describe('useMduiEvent', () => {
     expect(first).toHaveBeenCalledTimes(1);
 
     // Same event name, brand new inline function identity.
-    view.rerender(<Probe handler={() => second('latest')} />);
+    view.rerender(
+      <Host
+        handler={() => {
+          second('latest');
+        }}
+      />,
+    );
 
-    // No extra addEventListener call: the listener is bound exactly once.
+    // No extra addEventListener call: the listener stays bound exactly once.
     expect(addCalls).toBe(addsAfterMount);
     expect(removeCalls).toBe(0);
 
@@ -217,7 +246,7 @@ describe('useMduiEvent', () => {
 
   it('respects the `once` option', () => {
     const handler = vi.fn();
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
 
     function Once() {
       useMduiEvent(ref, 'change', handler, { once: true });
@@ -241,9 +270,8 @@ describe('useMduiEvent', () => {
 
 describe('useMduiProperty', () => {
   it('assigns JS properties, not attributes', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
     render(<x-probe ref={ref} />);
-
     const element = ref.current as Probe;
 
     function Assign() {
@@ -261,7 +289,7 @@ describe('useMduiProperty', () => {
   });
 
   it('writes booleans as properties too', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
     render(<x-probe ref={ref} />);
     const element = ref.current as Probe;
 
@@ -275,31 +303,34 @@ describe('useMduiProperty', () => {
     expect(element.hasAttribute('checked')).toBe(false);
   });
 
-  it('skips values that are already equal, including equal arrays', () => {
-    const ref = createRef<HTMLElement>();
+  it('does not rewrite a value the element already holds', () => {
+    const ref = createRef<Probe>();
     render(<x-probe ref={ref} />);
     const element = ref.current as Probe;
     element.value = ['a', 'b'];
 
-    const setter = vi.fn();
+    const written: string[][] = [];
     function Assign({ value }: { value: string[] }) {
       useMduiProperty(ref, { value });
-      // Track writes by spying on the setter through the prototype.
-      setter(value);
+      written.push(value);
       return null;
     }
 
     const view = render(<Assign value={['a', 'b']} />);
-    expect(setter).toHaveBeenCalledTimes(1);
+    expect(written).toHaveLength(1);
 
+    // A *new* array with identical contents must not be pushed back into the
+    // element, otherwise every render would reset internal selection state.
     view.rerender(<Assign value={['a', 'b']} />);
-    expect(setter).toHaveBeenCalledTimes(2);
-    // Equal content => no write; a fresh array identity does not force one.
+    view.rerender(<Assign value={['a', 'b']} />);
     expect(element.value).toEqual(['a', 'b']);
+
+    view.rerender(<Assign value={['a', 'c']} />);
+    expect(element.value).toEqual(['a', 'c']);
   });
 
   it('ignores undefined values', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
     render(<x-probe ref={ref} />);
     const element = ref.current as Probe;
     element.value = 'keep';
@@ -320,7 +351,7 @@ describe('useMduiProperty', () => {
 
 describe('useMduiModel', () => {
   it('writes the value to the property after mount', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
 
     function Field({ value }: { value: string }) {
       useMduiModel(ref, value, () => {}, 'change');
@@ -332,7 +363,7 @@ describe('useMduiModel', () => {
   });
 
   it('writes again when the prop changes', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
 
     function Field({ value }: { value: string }) {
       useMduiModel(ref, value, () => {}, 'change');
@@ -345,8 +376,8 @@ describe('useMduiModel', () => {
     expect(element.value).toBe('b');
   });
 
-  it('does not write when the value is unchanged (element-owned state survives)', () => {
-    const ref = createRef<HTMLElement>();
+  it('does not clobber element-owned state when the prop is unchanged', () => {
+    const ref = createRef<Probe>();
 
     function Field({ value }: { value: string }) {
       useMduiModel(ref, value, () => {}, 'change');
@@ -356,15 +387,16 @@ describe('useMduiModel', () => {
     render(<Field value="a" />);
     const element = ref.current as Probe;
 
-    // The element changes itself without React knowing (uncontrolled-ish usage).
+    // The element changes itself without React knowing.
     element.value = 'user-typed';
-    // A re-render with the *same* prop must not clobber it back.
-    render(<Field value="a" />);
+    // A re-render with the *same* prop must not reset it back.
+    const view = render(<Field value="a" />);
     expect(element.value).toBe('user-typed');
+    view.unmount();
   });
 
   it('reports user interaction through the setter', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
     const onChange = vi.fn();
 
     function Field({ value }: { value: string }) {
@@ -382,7 +414,7 @@ describe('useMduiModel', () => {
   });
 
   it('de-duplicates repeated reports of the same value', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
     const onChange = vi.fn();
 
     function Field({ value }: { value: string }) {
@@ -401,8 +433,26 @@ describe('useMduiModel', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it('supports a non-`value` property (checkbox pattern)', () => {
-    const ref = createRef<HTMLElement>();
+  it('uses the latest setter across re-renders', () => {
+    const ref = createRef<Probe>();
+    const stale = vi.fn();
+    const fresh = vi.fn();
+
+    function Field({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+      useMduiModel(ref, value, onChange, 'change');
+      return <x-probe ref={ref} />;
+    }
+
+    const view = render(<Field value="a" onChange={stale} />);
+    view.rerender(<Field value="a" onChange={fresh} />);
+
+    (ref.current as Probe).userSet('z');
+    expect(stale).not.toHaveBeenCalled();
+    expect(fresh).toHaveBeenCalledWith('z');
+  });
+
+  it('supports a non-`value` property (the checkbox pattern)', () => {
+    const ref = createRef<Probe>();
     const onChange = vi.fn();
 
     function Box({ checked }: { checked: boolean }) {
@@ -412,6 +462,7 @@ describe('useMduiModel', () => {
 
     render(<Box checked={false} />);
     const element = ref.current as Probe;
+    expect(element.checked).toBe(false);
 
     act(() => {
       element.userCheck(true);
@@ -419,8 +470,28 @@ describe('useMduiModel', () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
+  it('leaves the element in charge when the value is undefined', () => {
+    const ref = createRef<Probe>();
+    const onChange = vi.fn();
+
+    function Field() {
+      useMduiModel<string | undefined>(ref, undefined, onChange, 'change');
+      return <x-probe ref={ref} />;
+    }
+
+    render(<Field />);
+    const element = ref.current as Probe;
+    element.value = 'element-owned';
+
+    act(() => {
+      element.emit('change');
+    });
+    expect(element.value).toBe('element-owned');
+    expect(onChange).toHaveBeenCalledWith('element-owned');
+  });
+
   it('handles array values without reserialising on every render', () => {
-    const ref = createRef<HTMLElement>();
+    const ref = createRef<Probe>();
 
     function Collapse({ value }: { value: string[] }) {
       useMduiModel(ref, value, () => {}, 'change');
@@ -446,25 +517,24 @@ describe('useMduiModel', () => {
 
 describe('useMduiImperative', () => {
   it('returns the element after mount', () => {
-    let captured: HTMLElement | null = null;
+    const seen: (HTMLElement | null)[] = [];
 
     function Imperative() {
-      const ref = useRef<HTMLElement>(null);
-      const element = useMduiImperative(ref);
-      captured = element;
+      const ref = useRef<Probe>(null);
+      seen.push(useMduiImperative(ref));
       return <x-probe ref={ref} />;
     }
 
     render(<Imperative />);
-    expect(captured).not.toBeNull();
-    expect((captured as unknown as HTMLElement).tagName.toLowerCase()).toBe('x-probe');
+    expect(seen[seen.length - 1]).not.toBeNull();
+    expect((seen[seen.length - 1] as HTMLElement).tagName.toLowerCase()).toBe('x-probe');
   });
 
   it('returns null on the very first render', () => {
     const seen: (HTMLElement | null)[] = [];
 
     function Imperative() {
-      const ref = useRef<HTMLElement>(null);
+      const ref = useRef<Probe>(null);
       seen.push(useMduiImperative(ref));
       return <x-probe ref={ref} />;
     }
@@ -478,7 +548,7 @@ describe('useMduiImperative', () => {
     const seen: (HTMLElement | null)[] = [];
 
     function Imperative({ tick }: { tick: number }) {
-      const ref = useRef<HTMLElement>(null);
+      const ref = useRef<Probe>(null);
       seen.push(useMduiImperative(ref));
       return (
         <div>
@@ -505,30 +575,26 @@ describe('useMduiImperative', () => {
 
 describe('useMduiDefined', () => {
   it('reports true for an already registered tag', () => {
-    function Probe() {
+    function Host() {
       const defined = useMduiDefined('x-probe');
       return <div data-defined={String(defined)} />;
     }
 
-    const { container } = render(<Probe />);
+    const { container } = render(<Host />);
     expect(container.firstElementChild?.getAttribute('data-defined')).toBe('true');
   });
 
   it('resolves once an unknown tag is registered', async () => {
-    let resolveRegistration: (() => void) | undefined;
-
-    function Probe() {
+    function Host() {
       const defined = useMduiDefined('x-late-probe');
       return <div data-defined={String(defined)} />;
     }
 
-    const { container } = render(<Probe />);
+    const { container } = render(<Host />);
     expect(container.firstElementChild?.getAttribute('data-defined')).toBe('false');
 
     await act(async () => {
       customElements.define('x-late-probe', class extends HTMLElement {});
-      resolveRegistration = () => {};
-      resolveRegistration();
       await Promise.resolve();
     });
 
@@ -536,12 +602,12 @@ describe('useMduiDefined', () => {
   });
 
   it('does not throw for a tag that is never registered', () => {
-    function Probe() {
+    function Host() {
       const defined = useMduiDefined('x-never-defined');
       return <div data-defined={String(defined)} />;
     }
 
-    expect(() => render(<Probe />)).not.toThrow();
+    expect(() => render(<Host />)).not.toThrow();
   });
 });
 
@@ -551,10 +617,16 @@ describe('useMduiDefined', () => {
 
 describe('probe sanity', () => {
   it('dispatches events with a detail payload', () => {
-    const element = createProbe();
+    const element = document.createElement('x-probe') as Probe;
     const received: unknown[] = [];
     element.addEventListener('change', (event) => received.push((event as CustomEvent).detail));
     element.emit('change', 42);
     expect(received).toEqual([42]);
+  });
+
+  it('stores properties, never attributes', () => {
+    const element = document.createElement('x-probe') as Probe;
+    element.value = 'x';
+    expect(element.getAttribute('value')).toBeNull();
   });
 });

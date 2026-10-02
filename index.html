@@ -1,1 +1,40 @@
-<!doctype html><html><head></head><body><script type="module" src="/src/__probe.ts"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="description" content="A modern web frontend for aria2-next" />
+    <meta name="theme-color" content="#6750a4" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="alternate icon" href="./favicon.ico" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>AriaNg Next</title>
+    <style>
+      /* Hide mdui components until their definitions are registered (no FOUC). */
+      :not(:defined) {
+        visibility: hidden;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+      body {
+        opacity: 0;
+      }
+      body.ready {
+        opacity: 1;
+        transition: opacity 0.2s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

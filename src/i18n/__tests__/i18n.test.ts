@@ -385,3 +385,35 @@ describe('HTML safety', () => {
     expect(store.t('Danger')).toBe('<img src=x onerror=alert(1)>');
   });
 });
+/**
+ * Guards the single-file build budget.
+ *
+ * The `build:single` target cannot use dynamic imports, so all 11 locale
+ * bundles are inlined into one HTML file together with ECharts. If the
+ * translation payload grows past the budget below, the single-file artifact
+ * silently becomes unusable from `file://`, so fail loudly here instead.
+ */
+describe('locale payload budget', () => {
+  const BUDGET_BYTES = 1_400_000;
+
+  it('keeps every locale bundle within the single-file budget', async () => {
+    const locales = await import('../locales');
+    const keys = Object.keys(locales.eagerLocales);
+
+    expect(keys.length).toBe(11);
+
+    const sizes = keys.map((key) => ({
+      key,
+      bytes: JSON.stringify(locales.eagerLocales[key]).length,
+    }));
+
+    const total = sizes.reduce((sum, entry) => sum + entry.bytes, 0);
+
+    // Per-locale ceiling, so one runaway translation file is easy to spot.
+    for (const entry of sizes) {
+      expect(entry.bytes, `${entry.key} is ${entry.bytes} bytes`).toBeLessThan(BUDGET_BYTES / 4);
+    }
+
+    expect(total, `all locales total ${total} bytes`).toBeLessThan(BUDGET_BYTES);
+  });
+});

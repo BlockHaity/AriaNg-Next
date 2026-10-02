@@ -507,6 +507,12 @@ export interface MduiTextFieldProps extends Styleable {
  *   cannot be reached from light DOM directly.
  * - `error` is applied with `setCustomValidity()` so mdui renders the message in
  *   its own error slot instead of us hand-rolling the styling.
+ *
+ * TODO(mdui): `<mdui-text-field>`'s own declaration types `autocorrect` as
+ * `string`, which collides with the native `HTMLElement.autocorrect: boolean` and
+ * makes `TextField` unassignable to `HTMLElement`. Since `mdui/jsx.en.d.ts`
+ * declares the JSX `ref` as `Ref<HTMLElement>`, the ref is re-typed at the JSX
+ * boundary while staying strongly typed for the hooks.
  */
 export function MduiTextField(props: MduiTextFieldProps) {
   const {
@@ -531,10 +537,11 @@ export function MduiTextField(props: MduiTextFieldProps) {
     style,
   } = props;
   const ref = useRef<TextField>(null);
+  const hostRef = ref as unknown as RefObject<HTMLElement>;
 
   useMduiModel(ref, value, (next: string | undefined) => onInput?.(next ?? ''), 'input');
-  useMduiEvent(ref, 'change', () => onChange?.(ref.current?.value ?? ''));
-  useMduiEvent(ref, 'keydown', (_detail, event) => {
+  useMduiEvent(hostRef, 'change', () => onChange?.(ref.current?.value ?? ''));
+  useMduiEvent(hostRef, 'keydown', (_detail, event) => {
     if ((event as KeyboardEvent).key === 'Enter') onEnter?.(ref.current?.value ?? '');
   });
 
@@ -546,7 +553,7 @@ export function MduiTextField(props: MduiTextFieldProps) {
 
   return (
     <mdui-text-field
-      ref={ref}
+      ref={hostRef}
       className={className}
       style={style}
       label={label}
@@ -1162,7 +1169,10 @@ export interface MduiTopAppBarProps extends Styleable {
   children?: ReactNode;
 }
 
-const SCROLL_BEHAVIOR_ALIAS: Record<string, string | undefined> = {
+const SCROLL_BEHAVIOR_ALIAS: Record<
+  NonNullable<MduiTopAppBarProps['scrollBehavior']>,
+  'hide' | 'shrink' | 'elevate' | undefined
+> = {
   standard: undefined,
   pinned: 'elevate',
   hide: 'hide',
@@ -1179,8 +1189,7 @@ const SCROLL_BEHAVIOR_ALIAS: Record<string, string | undefined> = {
  */
 export function MduiTopAppBar(props: MduiTopAppBarProps) {
   const { variant, scrollBehavior, scrollThreshold, title, navigationIcon, actions, children, className, style } = props;
-  const scrollBehaviorAttr =
-    scrollBehavior === undefined ? undefined : (SCROLL_BEHAVIOR_ALIAS[scrollBehavior] ?? scrollBehavior);
+  const scrollBehaviorAttr = scrollBehavior === undefined ? undefined : SCROLL_BEHAVIOR_ALIAS[scrollBehavior];
 
   return (
     <mdui-top-app-bar

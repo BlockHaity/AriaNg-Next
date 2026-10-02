@@ -14,6 +14,9 @@ import type { Styleable } from './components';
 import { MduiDropdown, MduiMenuItem } from './components';
 import { hasIcon, icon } from './icons';
 
+import type { Dialog as MduiDialogElement } from 'mdui/components/dialog.js';
+import type { Snackbar as MduiSnackbarElement } from 'mdui/components/snackbar.js';
+
 export type { MduiDropdownProps } from './components';
 export type { MduiMenuItemProps } from './components';
 
