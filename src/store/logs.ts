@@ -105,10 +105,15 @@ function emit(level: LogLevel, args: unknown[]): void {
   } else {
     /* eslint-disable no-console */
     const method =
-      level === LogLevel.Error ? 'error' : level === LogLevel.Warn ? 'warn' : level === LogLevel.Info ? 'info' : 'log';
+      level === LogLevel.Error
+        ? 'error'
+        : level === LogLevel.Warn
+          ? 'warn'
+          : level === LogLevel.Info
+            ? 'info'
+            : 'log';
     const target = console as unknown as Record<string, ((...values: unknown[]) => void) | undefined>;
-    const write = target[method] ?? console.log;
-    write.call(console, message);
+    (target[method] ?? console.log).call(console, message);
     /* eslint-enable no-console */
   }
 

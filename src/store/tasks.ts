@@ -37,7 +37,7 @@ import { normalizePeers } from '@/domain/peers';
 import type { Aria2TaskStatusResult } from '@/rpc/types';
 import type { NormalizedTask, TaskPeer, TaskTracker } from '@/domain/types';
 import { RpcStatus, TaskListKind } from '@/config/rpc-constants';
-import { naturalCompare } from './_pending-defaults';
+import { naturalCompare } from '@/config/defaults';
 
 /* ------------------------------------------------------------------ */
 /* tuning                                                              */

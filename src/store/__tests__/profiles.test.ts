@@ -2,9 +2,9 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StorageKey } from '@/config/types';
 import type { RpcProfile } from '@/config/types';
-import type * as ProfilesModule from '../profiles';
-import type * as SettingsModule from '../settings';
-import type * as HooksModule from '../hooks';
+import * as ProfilesModule from '../profiles';
+import * as SettingsModule from '../settings';
+import * as HooksModule from '../hooks';
 
 /** Minimal in-memory `Storage`; `failSet` simulates quota / private mode. */
 class FakeStorage {
@@ -53,9 +53,9 @@ function storedProfiles(): Record<string, unknown>[] {
   return Array.isArray(list) ? (list as Record<string, unknown>[]) : [];
 }
 
-let profiles: ProfilesModule;
-let settings: SettingsModule;
-let hooks: HooksModule;
+let profiles: typeof ProfilesModule;
+let settings: typeof SettingsModule;
+let hooks: typeof HooksModule;
 
 beforeEach(async () => {
   vi.useFakeTimers();
@@ -371,14 +371,14 @@ describe('ordered()', () => {
   it('sorts by alias with naturalCompare for rpcAlias order', () => {
     settings.useSettingsStore.getState().update({ rpcListDisplayOrder: 'rpcAlias' });
     expect(
-      profiles.useProfilesStore.getState().ordered().map((p) => p.rpcAlias),
+      profiles.useProfilesStore.getState().ordered().map((p: RpcProfile) => p.rpcAlias),
     ).toEqual(['alpha 2', 'alpha 10', 'zzz default']);
   });
 
   it('keeps natural order (default first) for recentlyUsed', () => {
     settings.useSettingsStore.getState().update({ rpcListDisplayOrder: 'recentlyUsed' });
     expect(
-      profiles.useProfilesStore.getState().ordered().map((p) => p.rpcAlias),
+      profiles.useProfilesStore.getState().ordered().map((p: RpcProfile) => p.rpcAlias),
     ).toEqual(['zzz default', 'alpha 10', 'alpha 2']);
   });
 });

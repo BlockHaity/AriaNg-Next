@@ -29,7 +29,7 @@ import type { Aria2GlobalStat, Aria2VersionInfo } from '@/rpc/types';
 import { RpcEvent, RpcStatus } from '@/config/rpc-constants';
 import type { RpcEvent as RpcEventName } from '@/config/rpc-constants';
 import type { AriaNgSettings, RpcProfile } from '@/config/types';
-import { DEFAULT_SETTINGS } from './_pending-defaults';
+import { DEFAULT_SETTINGS } from '@/config/defaults';
 import { useSettingsStore } from './settings';
 import { recordGlobalStat, resetStats } from './monitor';
 import { useTasksStore } from './tasks';

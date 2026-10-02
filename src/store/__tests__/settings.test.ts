@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StorageKey } from '@/config/types';
 import { DEFAULT_SETTINGS } from '@/config/defaults';
-import type * as SettingsModule from '../settings';
+import * as SettingsModule from '../settings';
 
 /** Minimal in-memory `Storage`; `failSet` simulates quota / private mode. */
 class FakeStorage {
@@ -61,7 +61,7 @@ function readStoredOptions(): Record<string, unknown> {
   return raw === null ? {} : (JSON.parse(raw) as Record<string, unknown>);
 }
 
-let store: SettingsModule;
+let store: typeof SettingsModule;
 
 beforeEach(async () => {
   vi.useFakeTimers();
