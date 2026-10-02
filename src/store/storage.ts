@@ -6,9 +6,9 @@
  *
  * - Every key is namespaced as `AriaNg.<key>`.  The `StorageKey` constants in
  *   `@/config/types` (`AriaNg.Options`, `AriaNg.History.*`, …) **already carry
- *   that prefix**, so they are passed through verbatim — `normalizeKey()` never
- *   double-prefixes an already prefixed key, it only adds the namespace to a
- *   bare one.
+ *   that prefix**, so they are passed through verbatim — `normalizeStorageKey()`
+ *   never double-prefixes an already prefixed key, it only adds the namespace
+ *   to a bare one.
  * - Values are JSON.  A stored `null` (or the literal string `"null"`) means
  *   *absent*: `storageGet` returns the caller's fallback.
  * - When `localStorage` is missing **or `setItem` throws** (quota exhausted,
@@ -37,7 +37,11 @@ const NAMESPACE = `${STORAGE_PREFIX}.`;
 /** Key used to probe `localStorage` writability (quota / private mode check). */
 const PROBE_KEY = `${NAMESPACE}__ariang_probe__`;
 const PROBE_VALUE = '1';
-/** AriaNg wrote `max-age=365`; kept literal for byte-compatibility. */
+/**
+ * Cookie lifetime. AriaNg wrote `max-age=365` literally, so the value is kept
+ * as-is for byte-compatibility with existing installs rather than being
+ * "fixed" to 365 days.
+ */
 const COOKIE_MAX_AGE = 365;
 const COOKIE_PATH = '/';
 

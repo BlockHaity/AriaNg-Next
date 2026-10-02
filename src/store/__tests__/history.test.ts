@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HISTORY_MAX_STORE_COUNT, StorageKey } from '@/config/types';
+import type * as HistoryModule from '../history';
 
+/** Minimal in-memory `Storage`; `failSet` simulates quota / private mode. */
 class FakeStorage {
   readonly map = new Map<string, string>();
   failSet = false;
@@ -24,27 +26,14 @@ class FakeStorage {
     if (this.failSet) throw new DOMException('QuotaExceededError');
     this.map.set(key, String(value));
   }
-  toStorage(): Storage {
-    const self = this;
-    return {
-      get length() {
-        return self.length;
-      },
-      clear: () => self.clear(),
-      getItem: (key: string) => self.getItem(key),
-      key: (index: number) => self.key(index),
-      removeItem: (key: string) => self.removeItem(key),
-      setItem: (key: string, value: string) => self.setItem(key, value),
-    } as Storage;
-  }
 }
 
 let local: FakeStorage;
-let history: typeof import('../history');
+let history: typeof HistoryModule;
 
 beforeEach(async () => {
   local = new FakeStorage();
-  vi.stubGlobal('localStorage', local.toStorage());
+  vi.stubGlobal('localStorage', local as unknown as Storage);
   vi.resetModules();
   history = await import('../history');
 });
@@ -120,6 +109,16 @@ describe('clearing', () => {
     expect(history.getSettingHistory('dir')).toEqual([]);
     expect(history.getSettingHistory('out')).toEqual(['/b']);
     expect(local.getItem(`${StorageKey.HistoryPrefix}dir`)).toBeNull();
+  });
+
+  it('leaves sibling keys that only share the prefix text', () => {
+    history.addSettingHistory('dir', '/a');
+    local.map.set('AriaNg.HistoryCache.dir', '[]');
+
+    history.clearSettingHistories();
+
+    expect(history.getSettingHistory('dir')).toEqual([]);
+    expect(local.getItem('AriaNg.HistoryCache.dir')).toBe('[]');
   });
 
   it('clearSettingHistories removes only History.* keys', () => {

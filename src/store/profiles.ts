@@ -20,23 +20,28 @@
 import { create } from 'zustand';
 import type { StoreApi, UseBoundStore } from 'zustand';
 import type { AriaNgSettings, RpcProfile, RpcProtocol } from '@/config/types';
-// TODO: switch to @/config/defaults once available
 import {
   cloneRpcProfile,
   createNewRpcProfile,
-  generateUuid,
+  generateRpcId,
   isWebSocketProfile,
   naturalCompare,
   rpcProfileDisplayName,
   rpcProfilesEqual,
-} from './_pending-defaults';
-import {
-  DEFAULT_RPC_DISPLAY_NAME,
-  normalizeRpcPort,
-  useSettingsStore,
-} from './settings';
+  rpcProfileUrl,
+} from '@/config/defaults';
+import { DEFAULT_RPC_DISPLAY_NAME, normalizeRpcPort, useSettingsStore } from './settings';
 
-export { DEFAULT_RPC_DISPLAY_NAME, isWebSocketProfile, rpcProfileDisplayName };
+// Re-exported for convenience: profile helpers are always used together.
+// Re-exported for convenience: profile helpers are always used together, and
+// consumers of the store barrel should not have to reach into `@/config`.
+export {
+  isWebSocketProfile,
+  naturalCompare,
+  rpcProfileDisplayName,
+  rpcProfilesEqual,
+  rpcProfileUrl,
+};
 
 /** Settings key -> profile field, for the default profile (top-level slot). */
 const TOP_LEVEL_FIELDS = [
@@ -181,14 +186,18 @@ export const useProfilesStore: UseBoundStore<StoreApi<ProfilesState>> =
       },
 
       displayName(profile) {
-        return rpcProfileDisplayName(profile) || DEFAULT_RPC_DISPLAY_NAME;
+        // `rpcProfileDisplayName` falls back to `host:port`, which is
+        // meaningless for a brand new (blank) profile — show the generic label
+        // there instead, exactly like AriaNg's unnamed default server.
+        if (!profile.rpcAlias && !profile.rpcHost) return DEFAULT_RPC_DISPLAY_NAME;
+        return rpcProfileDisplayName(profile);
       },
 
       add() {
         const created = createNewRpcProfile();
         const profile: RpcProfile = {
           ...cloneRpcProfile(created),
-          rpcId: created.rpcId || generateUuid(),
+          rpcId: created.rpcId || generateRpcId(),
           isDefault: false,
         };
         const list = [...(settingsState().get('extendRpcServers') ?? []), profile];
@@ -245,7 +254,7 @@ export const useProfilesStore: UseBoundStore<StoreApi<ProfilesState>> =
           const template = createNewRpcProfile();
           list.unshift({
             ...template,
-            rpcId: template.rpcId || generateUuid(),
+            rpcId: template.rpcId || generateRpcId(),
             isDefault: false,
             rpcAlias: previousDefault.rpcAlias,
             rpcHost: previousDefault.rpcHost,

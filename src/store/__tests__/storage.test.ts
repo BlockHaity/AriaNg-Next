@@ -1,16 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
+import type * as StorageModule from '../storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ------------------------------------------------------------------ */
 /* fake storage backends                                               */
 /* ------------------------------------------------------------------ */
 
+/** Minimal in-memory `Storage`; `failSet` simulates quota / private mode. */
 class FakeStorage {
   readonly map = new Map<string, string>();
-  /** When true every `setItem` throws, like Safari private mode / quota. */
   failSet = false;
-  /** When true even *accessing* `localStorage` throws, like blocked cookies. */
-  failAccess = false;
 
   get length(): number {
     return this.map.size;
@@ -30,19 +29,6 @@ class FakeStorage {
   setItem(key: string, value: string): void {
     if (this.failSet) throw new DOMException('QuotaExceededError');
     this.map.set(key, String(value));
-  }
-  toStorage(): Storage {
-    const self = this;
-    return {
-      get length() {
-        return self.length;
-      },
-      clear: () => self.clear(),
-      getItem: (key: string) => self.getItem(key),
-      key: (index: number) => self.key(index),
-      removeItem: (key: string) => self.removeItem(key),
-      setItem: (key: string, value: string) => self.setItem(key, value),
-    } as Storage;
   }
 }
 
@@ -69,19 +55,19 @@ function unblockCookies(): void {
   delete (document as unknown as Record<string, unknown>).cookie;
 }
 
-type StorageModule = typeof import('../storage');
-
-let storage: StorageModule;
+let storage: typeof StorageModule;
 let local: FakeStorage;
 
-async function loadStorage(): Promise<StorageModule> {
+async function loadStorage() {
+  // The capability flags are module-evaluation constants, so every test needs
+  // a fresh module instance to observe its own fake environment.
   vi.resetModules();
   return import('../storage');
 }
 
 beforeEach(async () => {
   local = new FakeStorage();
-  vi.stubGlobal('localStorage', local.toStorage());
+  vi.stubGlobal('localStorage', local as unknown as Storage);
   clearCookies();
   storage = await loadStorage();
 });
@@ -252,5 +238,27 @@ describe('ephemeral in-memory fallback', () => {
     unsubscribe();
     storage.storageRemove('AriaNg.Options');
     expect(storage.storageKeys()).toEqual([]);
+  });
+});
+
+describe('storage hooks', () => {
+  it('follow the live availability of the storage backends', async () => {
+    const hooks = await import('../hooks');
+    const { result } = renderHook(() => ({
+      available: hooks.useStorageAvailable(),
+      ephemeral: hooks.useStorageEphemeral(),
+    }));
+
+    expect(result.current).toEqual({ available: true, ephemeral: false });
+
+    act(() => {
+      local.failSet = true;
+      blockCookies();
+      storage.storageSet('AriaNg.Options', { title: 'volatile' });
+    });
+
+    // The shell can now warn that settings will not survive a reload.
+    expect(result.current).toEqual({ available: false, ephemeral: true });
+    unblockCookies();
   });
 });

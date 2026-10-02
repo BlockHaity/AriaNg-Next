@@ -2,7 +2,11 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StorageKey } from '@/config/types';
 import type { RpcProfile } from '@/config/types';
+import type * as ProfilesModule from '../profiles';
+import type * as SettingsModule from '../settings';
+import type * as HooksModule from '../hooks';
 
+/** Minimal in-memory `Storage`; `failSet` simulates quota / private mode. */
 class FakeStorage {
   readonly map = new Map<string, string>();
   failSet = false;
@@ -25,19 +29,6 @@ class FakeStorage {
   setItem(key: string, value: string): void {
     if (this.failSet) throw new DOMException('QuotaExceededError');
     this.map.set(key, String(value));
-  }
-  toStorage(): Storage {
-    const self = this;
-    return {
-      get length() {
-        return self.length;
-      },
-      clear: () => self.clear(),
-      getItem: (key: string) => self.getItem(key),
-      key: (index: number) => self.key(index),
-      removeItem: (key: string) => self.removeItem(key),
-      setItem: (key: string, value: string) => self.setItem(key, value),
-    } as Storage;
   }
 }
 
@@ -62,10 +53,6 @@ function storedProfiles(): Record<string, unknown>[] {
   return Array.isArray(list) ? (list as Record<string, unknown>[]) : [];
 }
 
-type ProfilesModule = typeof import('../profiles');
-type SettingsModule = typeof import('../settings');
-type HooksModule = typeof import('../hooks');
-
 let profiles: ProfilesModule;
 let settings: SettingsModule;
 let hooks: HooksModule;
@@ -73,7 +60,7 @@ let hooks: HooksModule;
 beforeEach(async () => {
   vi.useFakeTimers();
   local = new FakeStorage();
-  vi.stubGlobal('localStorage', local.toStorage());
+  vi.stubGlobal('localStorage', local as unknown as Storage);
   installLocation('http:', 'localhost');
   vi.resetModules();
   settings = await import('../settings');
@@ -291,8 +278,11 @@ describe('setDefault', () => {
 
   it('coerces the promoted port like every other write', () => {
     const store = profiles.useProfilesStore;
-    const created = store.getState().add(); // blank port
+    const created = store.getState().add();
+    store.getState().update(created, { rpcPort: '' });
+
     store.getState().setDefault(created);
+
     expect(settings.useSettingsStore.getState().get('rpcPort')).toBe('0');
   });
 
@@ -349,12 +339,19 @@ describe('isEqualToDefault', () => {
   it('compares against the current top-level profile', () => {
     const store = profiles.useProfilesStore;
     const [first] = store.getState().profiles;
-    const created = store.getState().add();
 
+    // `rpcId` is not part of the comparison.
     expect(store.getState().isEqualToDefault({ ...first, rpcId: 'x' })).toBe(true);
-    expect(store.getState().isEqualToDefault(created)).toBe(false);
 
-    store.getState().update(first, { rpcHost: 'other' });
+    const created = store.getState().add();
+    // A blank new profile is field-identical to the default one…
+    expect(store.getState().isEqualToDefault(created)).toBe(true);
+
+    store.getState().update(created, { rpcAlias: 'nas' });
+    // …until it is edited: the mirror is rebuilt, so read the current object.
+    expect(store.getState().isEqualToDefault(store.getState().profiles[1])).toBe(false);
+
+    store.getState().update(store.getState().profiles[0], { rpcHost: 'other-host' });
     expect(store.getState().isEqualToDefault({ ...first, rpcId: 'x' })).toBe(false);
   });
 });
@@ -387,14 +384,16 @@ describe('ordered()', () => {
 });
 
 describe('displayName', () => {
-  it('prefers the alias, falls back to the host, then to "Default"', () => {
+  it('prefers the alias, falls back to host:port, then to "Default"', () => {
     const store = profiles.useProfilesStore;
     expect(store.getState().displayName(server({ rpcAlias: 'nas' }))).toBe('nas');
     expect(
-      store.getState().displayName(server({ rpcAlias: '', rpcHost: '10.0.0.9' })),
-    ).toBe('10.0.0.9');
+      store.getState().displayName(server({ rpcAlias: '', rpcHost: '10.0.0.9', rpcPort: '6801' })),
+    ).toBe('10.0.0.9:6801');
     expect(
-      store.getState().displayName(server({ rpcAlias: '', rpcHost: '' })),
+      store.getState().displayName(
+        server({ rpcAlias: '', rpcHost: '', rpcPort: '' }),
+      ),
     ).toBe('Default');
   });
 });
@@ -424,13 +423,15 @@ describe('selector hooks', () => {
     const { result } = renderHook(() => ({
       profile: hooks.useRpcProfile(),
       name: hooks.useRpcDisplayName(),
+      protocol: hooks.useRpcProtocol(),
       ws: hooks.useIsWebSocket(),
       title: hooks.useTranslateSetting('title'),
       broken: hooks.useIsStorageBroken(),
     }));
 
     expect(result.current.profile.isDefault).toBe(true);
-    expect(result.current.name).toBe('localhost');
+    expect(result.current.name).toBe('localhost:6800');
+    expect(result.current.protocol).toBe('http');
     expect(result.current.ws).toBe(false);
     expect(result.current.broken).toBe(false);
 
@@ -451,6 +452,7 @@ describe('selector hooks', () => {
     act(() => {
       settings.useSettingsStore.getState().set('protocol', 'wss');
     });
+    expect(result.current.protocol).toBe('wss');
     expect(result.current.ws).toBe(true);
   });
 });

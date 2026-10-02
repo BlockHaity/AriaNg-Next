@@ -11,6 +11,15 @@ export type OptionValueType =
   | 'float'
   | 'boolean'
   | 'option'
+  /**
+   * A dropdown of known values **plus** free text.
+   *
+   * Needed for aria2-next track selection: `--media-video` accepts `best`,
+   * `none`, a language code, or an opaque track ID that only exists at runtime
+   * (it comes back from `media.tracks` after probing). A plain `option` select
+   * would make those values impossible to enter.
+   */
+  | 'string-or-option'
   | 'readonly';
 
 /** Where an option shows up in the settings navigation. */
@@ -39,7 +48,9 @@ export interface Aria2OptionMeta {
   submitFormat?: 'string' | 'array';
   /** Show "(N items)" under the key label. */
   showCount?: boolean;
-  /** Allowed values for `option` type. */
+  /** Count non-blank items when rendering "(N items)" (only `header` uses it). */
+  trimCount?: boolean;
+  /** Allowed values for `option` and `string-or-option` types. */
   options?: string[];
   min?: number;
   max?: number;
@@ -55,12 +66,26 @@ export interface Aria2OptionMeta {
 export interface TaskOptionRule {
   key: string;
   category: 'global' | 'http' | 'bittorrent' | 'media';
-  canShow?: TaskOptionContext | `${TaskOptionContext}`;
-  canUpdate?: TaskOptionContext | `${TaskOptionContext}`;
+  /**
+   * AriaNg stored these as a pipe-separated list, e.g. `'new|waiting|paused'`.
+   * Use {@link parseTaskOptionContexts} to read them.
+   */
+  canShow?: string;
+  canUpdate?: string;
   showHistory?: boolean;
 }
 
 export type TaskOptionContext = 'new' | 'active' | 'waiting' | 'paused';
+
+/** Splits AriaNg's pipe-separated context spec into a deduped context list. */
+export function parseTaskOptionContexts(spec: string | undefined): TaskOptionContext[] {
+  if (!spec) return [];
+  const allowed: TaskOptionContext[] = ['new', 'active', 'waiting', 'paused'];
+  return spec
+    .split('|')
+    .map((part) => part.trim())
+    .filter((part): part is TaskOptionContext => (allowed as string[]).includes(part));
+}
 
 export const OPTION_GROUP_ROUTES = [
   'basic',

@@ -24,14 +24,8 @@ import type {
   SessionSettings,
 } from '@/config/types';
 import { StorageKey } from '@/config/types';
-// TODO: switch to @/config/defaults once available
-import {
-  DEFAULT_SETTINGS,
-  createDefaultSettings,
-  createNewRpcProfile,
-  RPC_HTTP_METHODS,
-  RPC_PROTOCOLS,
-} from './_pending-defaults';
+import { DEFAULT_SETTINGS, createDefaultSettings, createNewRpcProfile, createSessionSettings } from '@/config/defaults';
+import { resolveLanguageByAlias } from '@/config/languages';
 import { storageGet, storageIsAvailable, storageSet } from './storage';
 
 /** Debounce for the read-modify-write against `AriaNg.Options`. */
@@ -45,22 +39,9 @@ const INVALID_SETTINGS_MESSAGE = 'Invalid settings data format!';
 
 const DISPLAY_ORDER_RE = /^[a-z_]+:(asc|desc)$/i;
 
-/**
- * Legacy language keys AriaNg accepted, mapped onto the modern ones.
- * TODO: the canonical registry lives in `@/i18n` (written in parallel) — swap
- * `repairLanguage` for that registry once it lands.
- */
-const LANGUAGE_ALIASES: Record<string, string> = {
-  zh: 'zh_Hans',
-  zh_CN: 'zh_Hans',
-  zh_SG: 'zh_Hans',
-  zh_TW: 'zh_Hant',
-  zh_HK: 'zh_Hant',
-  zh_MO: 'zh_Hant',
-};
-
-/** Structurally valid locale key, e.g. `en`, `pt_BR`, `zh_Hans`. */
-const LANGUAGE_KEY_RE = /^[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})*$/;
+/** Valid `protocol` / `httpMethod` values, used to sanitise imported profiles. */
+const RPC_PROTOCOLS: readonly RpcProtocol[] = ['http', 'https', 'ws', 'wss'];
+const RPC_HTTP_METHODS: readonly RpcHttpMethod[] = ['POST', 'GET'];
 
 /* ------------------------------------------------------------------ */
 /* environment helpers                                                 */
@@ -171,16 +152,24 @@ export function sanitizeRpcProfile(raw: unknown): RpcProfile | null {
   };
 }
 
+/**
+ * Repairs an unsupported stored `language` through the canonical language
+ * registry (`@/config/languages`), so legacy keys such as `zh_CN` / `zh-TW`
+ * collapse onto their modern key (`zh_Hans` / `zh_Hant`).
+ *
+ * `auto` is passed through untouched: it is AriaNg's "follow the browser"
+ * value and is resolved by the i18n layer, not by this registry.
+ */
 function repairLanguage(value: unknown): { value: string; changed: boolean } {
-  const fallback = typeof DEFAULT_SETTINGS.language === 'string' ? DEFAULT_SETTINGS.language : 'auto';
+  const fallback =
+    typeof DEFAULT_SETTINGS.language === 'string' ? DEFAULT_SETTINGS.language : 'en';
   if (typeof value !== 'string') return { value: fallback, changed: true };
   const raw = value.trim();
-  if (!raw || raw.toLowerCase() === 'auto') {
-    return { value: fallback, changed: raw !== fallback };
-  }
-  const normalized = LANGUAGE_ALIASES[raw] ?? raw;
-  if (!LANGUAGE_KEY_RE.test(normalized)) return { value: fallback, changed: true };
-  return { value: normalized, changed: normalized !== value };
+  if (!raw) return { value: fallback, changed: true };
+  if (raw.toLowerCase() === 'auto') return { value: raw, changed: raw !== value };
+  const resolved = resolveLanguageByAlias(raw);
+  if (!resolved) return { value: fallback, changed: true };
+  return { value: resolved.key, changed: resolved.key !== value };
 }
 
 /** in-memory (plain secret) -> storage shape (base64 secret). */
@@ -328,7 +317,7 @@ export interface SettingsState {
 export const useSettingsStore: UseBoundStore<StoreApi<SettingsState>> =
   create<SettingsState>()((commit, get) => ({
     settings: createDefaultSettings(),
-    session: { debugMode: false },
+    session: createSessionSettings(),
     hydrated: false,
     storageBroken: !storageIsAvailable(),
     firstVisit: false,

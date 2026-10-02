@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StorageKey } from '@/config/types';
-// TODO: switch to @/config/defaults once available
-import { DEFAULT_SETTINGS } from '../_pending-defaults';
+import { DEFAULT_SETTINGS } from '@/config/defaults';
+import type * as SettingsModule from '../settings';
 
+/** Minimal in-memory `Storage`; `failSet` simulates quota / private mode. */
 class FakeStorage {
   readonly map = new Map<string, string>();
   failSet = false;
@@ -25,19 +26,6 @@ class FakeStorage {
   setItem(key: string, value: string): void {
     if (this.failSet) throw new DOMException('QuotaExceededError');
     this.map.set(key, String(value));
-  }
-  toStorage(): Storage {
-    const self = this;
-    return {
-      get length() {
-        return self.length;
-      },
-      clear: () => self.clear(),
-      getItem: (key: string) => self.getItem(key),
-      key: (index: number) => self.key(index),
-      removeItem: (key: string) => self.removeItem(key),
-      setItem: (key: string, value: string) => self.setItem(key, value),
-    } as Storage;
   }
 }
 
@@ -73,14 +61,12 @@ function readStoredOptions(): Record<string, unknown> {
   return raw === null ? {} : (JSON.parse(raw) as Record<string, unknown>);
 }
 
-type SettingsModule = typeof import('../settings');
-
 let store: SettingsModule;
 
 beforeEach(async () => {
   vi.useFakeTimers();
   local = new FakeStorage();
-  vi.stubGlobal('localStorage', local.toStorage());
+  vi.stubGlobal('localStorage', local as unknown as Storage);
   installLocation('http:', 'localhost');
   vi.resetModules();
   store = await import('../settings');
@@ -183,6 +169,31 @@ describe('hydrate', () => {
     useSettingsStore.getState().set('title', 'x');
     useSettingsStore.getState().hydrate();
     expect(useSettingsStore.getState().settings.title).toBe('x');
+  });
+
+  it('survives a corrupted options blob', () => {
+    const { useSettingsStore } = store;
+    for (const raw of ['not json at all', '[1,2,3]', '42', '"a string"', 'null']) {
+      local.map.set(StorageKey.Options, raw);
+      useSettingsStore.getState().hydrate();
+      const state = useSettingsStore.getState();
+      expect(state.hydrated).toBe(true);
+      expect(state.settings.rpcPort).toBe('6800');
+      expect(state.settings.extendRpcServers).toEqual([]);
+      // Re-arm the guard for the next iteration.
+      useSettingsStore.setState({ hydrated: false });
+    }
+  });
+
+  it('keeps a first visit clean and persists a complete blob', () => {
+    const { useSettingsStore } = store;
+    useSettingsStore.getState().hydrate();
+
+    const stored = readStoredOptions();
+    const defaults = DEFAULT_SETTINGS as unknown as Record<string, unknown>;
+    for (const key of Object.keys(defaults)) {
+      expect(stored, `missing key in stored blob: ${key}`).toHaveProperty(key);
+    }
   });
 });
 
@@ -314,7 +325,7 @@ describe('export / import', () => {
     expect(parsed.rpcPort).toBe('6800');
 
     useSettingsStore.getState().reset();
-    expect(useSettingsStore.getState().settings.title).toBe('');
+    expect(useSettingsStore.getState().settings.title).toBe(DEFAULT_SETTINGS.title);
 
     expect(useSettingsStore.getState().importAll(json)).toEqual({ ok: true });
     const state = useSettingsStore.getState();
