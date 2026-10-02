@@ -177,16 +177,14 @@ export function useMduiProperty<T extends object>(
  * Workaround: mdui exposes imperative APIs (`dialog.open = true`,
  * `textField.focus()`, `dialog.close()`) that have no declarative equivalent.
  * A React ref is populated *after* render but *before* effects, so the element
- * cannot be observed during render — hence one extra render is scheduled to make
- * it visible. Returns `null` for the first render and the live element after
- * that, so imperative calls belong in an effect, never during render.
+ * cannot be observed during the render that created it — this returns `null` on
+ * that first render and the live element from the next one onwards. Imperative
+ * calls therefore belong in an effect, never during render.
  */
 export function useMduiImperative<T extends HTMLElement>(ref: RefObject<T | null>): T | null {
-  // A React ref is populated after render but before effects, so the element can
-  // only be observed once React re-reads it. `useSyncExternalStore` is the
-  // supported way to read such a non-reactive external value during render:
-  // React calls the snapshot getter itself and re-runs the render when it
-  // changes, which keeps the value consistent instead of caching a stale copy.
+  // `useSyncExternalStore` is the supported way to read a non-reactive external
+  // value (a ref) during render: React calls the snapshot getter itself and
+  // re-renders when it changes, instead of caching a stale copy in state.
   return useSyncExternalStore(
     // A ref never notifies, so the subscription is intentionally inert.
     () => () => {},
@@ -253,12 +251,11 @@ export function useMduiModel<T>(
   prop = 'value',
 ): T {
   const latestSetter = useRef(setValue);
-  const latestValue = useRef(value);
+  /** Last value handed to `setValue`, used to swallow duplicate reports. */
   const reported = useRef(value);
 
   useIsomorphicLayoutEffect(() => {
     latestSetter.current = setValue;
-    latestValue.current = value;
   });
 
   useMduiEvent(ref, event, () => {

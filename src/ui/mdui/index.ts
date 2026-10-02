@@ -45,7 +45,6 @@ export {
   MduiListItem,
   MduiListSubheader,
   MduiMenu,
-  MduiMenuItem,
   MduiNavigationBar,
   MduiNavigationBarItem,
   MduiNavigationDrawer,
@@ -105,7 +104,7 @@ export type {
 } from './components';
 
 /* Overlays ---------------------------------------------------------------- */
-export { MduiBanner, MduiDialog, MduiDropdown, MduiSnackbar } from './overlays';
+export { MduiBanner, MduiDialog, MduiDropdown, MduiMenuItem, MduiSnackbar } from './overlays';
 export type { MduiBannerProps, MduiDialogProps, MduiSnackbarProps } from './overlays';
 
 /* Promise-based dialogs --------------------------------------------------- */

@@ -510,9 +510,9 @@ export interface MduiTextFieldProps extends Styleable {
  *
  * TODO(mdui): `<mdui-text-field>`'s own declaration types `autocorrect` as
  * `string`, which collides with the native `HTMLElement.autocorrect: boolean` and
- * makes `TextField` unassignable to `HTMLElement`. Since `mdui/jsx.en.d.ts`
- * declares the JSX `ref` as `Ref<HTMLElement>`, the ref is re-typed at the JSX
- * boundary while staying strongly typed for the hooks.
+ * therefore makes `TextField` unassignable to `HTMLElement`. Since
+ * `mdui/jsx.en.d.ts` declares the JSX `ref` as `Ref<HTMLElement>`, the ref is
+ * kept as `HTMLElement` and only the typed reads go through `field()`.
  */
 export function MduiTextField(props: MduiTextFieldProps) {
   const {
@@ -537,24 +537,41 @@ export function MduiTextField(props: MduiTextFieldProps) {
     style,
   } = props;
   const ref = useRef<HTMLElement>(null);
-  // `<mdui-text-field>`'s own declaration types `autocorrect` as `string`, which
-  // collides with the native `HTMLElement.autocorrect: boolean` and therefore
-  // makes `TextField` unassignable to `HTMLElement`. The hooks only need
-  // `addEventListener` / a `[prop]` slot, so they take the plain `HTMLElement`
-  // ref and only the two typed reads below go through this alias.
-  const field = ref as unknown as TextField | null;
+  /** Typed view of the host element — see the TODO above. */
+  const field = (): TextField | null => ref.current as unknown as TextField | null;
 
   useMduiModel(ref, value, (next: string | undefined) => onInput?.(next ?? ''), 'input');
-  useMduiEvent(ref, 'change', () => onChange?.(field?.value ?? ''));
+  useMduiEvent(ref, 'change', () => onChange?.(field()?.value ?? ''));
   useMduiEvent(ref, 'keydown', (_detail, event) => {
-    if ((event as KeyboardEvent).key === 'Enter') onEnter?.(field?.value ?? '');
+    if ((event as KeyboardEvent).key === 'Enter') onEnter?.(field()?.value ?? '');
   });
 
   // Re-applied when the value changes too: mdui re-validates on input, so a
   // value that became invalid needs the custom message back in place.
+  //
+  // `setCustomValidity()` reaches straight into the inner `<input>`, which only
+  // exists once Lit has rendered the shadow root. React's passive effect can win
+  // that race (Lit renders in a microtask), so the write is deferred to
+  // `updateComplete` — without this, an early mount throws.
   useEffect(() => {
-    field?.setCustomValidity(error ?? '');
-  }, [error, value, field]);
+    const element = field();
+    if (!element) return;
+    const message = error ?? '';
+    const pending = (element as unknown as { updateComplete?: Promise<unknown> }).updateComplete;
+    if (pending && typeof pending.then === 'function') {
+      void pending
+        .then(() => element.setCustomValidity(message))
+        .catch(() => {
+          /* the field was unmounted before it finished rendering */
+        });
+      return;
+    }
+    try {
+      element.setCustomValidity(message);
+    } catch {
+      /* shadow DOM not rendered yet */
+    }
+  }, [error, value, ref]);
 
   return (
     <mdui-text-field
