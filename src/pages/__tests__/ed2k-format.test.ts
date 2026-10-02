@@ -4,11 +4,16 @@
  * These cover the branches that only fire against a real, slightly-broken
  * daemon: partial rows, decimal strings, and the accumulated (rather than
  * delta) result set that `getEd2kSearchResults` keeps re-sending.
+ *
+ * Field names follow `Aria2Ed2kSearchResult`, which mirrors the manual
+ * (`hash`, `name`, `length`, `sourceCount`, …); the `fileX` spellings are
+ * asserted separately as the aliases `normalizeResult` also accepts.
  */
 
 import { describe, expect, it } from 'vitest';
 
 import { readableVolume } from '@/i18n/format';
+import type { Aria2Ed2kSearchResult } from '@/rpc/types';
 import {
   UNKNOWN_FILENAME,
   UNKNOWN_SIZE,
@@ -25,36 +30,49 @@ import {
 } from '../ed2k-search/format';
 import type { NormalizedEd2kResult } from '../ed2k-search/format';
 
+/**
+ * Builds a raw wire payload without the excess-property check.
+ *
+ * Deliberate: several of these tests feed the normaliser shapes the type does
+ * not declare (the `fileX` aliases, an empty object), and that is exactly the
+ * input it has to survive.
+ */
+function raw(fields: Record<string, unknown>): Aria2Ed2kSearchResult {
+  return fields as Aria2Ed2kSearchResult;
+}
+
+const LINK = 'ed2k://|file|ubuntu-24.04.iso|3518384816|A1B2C3D4E5F60718293A4B5C6D7E8F90|/';
+
 /** A complete hit, exactly as `getEd2kSearchResults` reports one. */
-const COMPLETE = {
-  ed2kLink: 'ed2k://|file|ubuntu-24.04.iso|3518384816|A1B2C3D4E5F60718293A4B5C6D7E8F90|/',
-  filename: 'ubuntu-24.04.iso',
-  fileLength: '3518384816',
-  fileHash: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',
+const COMPLETE = raw({
+  ed2kLink: LINK,
+  name: 'ubuntu-24.04.iso',
+  length: '3518384816',
+  hash: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',
   mediaCodec: 'H.264',
   sourceNetwork: 'eMule Security',
-} as const;
+});
 
 describe('normalizeResult', () => {
   it('normalises a complete result', () => {
-    const result = normalizeResult({ ...COMPLETE }, 0);
-
-    expect(result).toEqual({
-      key: COMPLETE.ed2kLink,
-      ed2kLink: COMPLETE.ed2kLink,
+    expect(normalizeResult({ ...COMPLETE }, 0)).toEqual({
+      key: LINK,
+      ed2kLink: LINK,
       filename: 'ubuntu-24.04.iso',
       fileLength: 3518384816,
       fileHash: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',
       mediaCodec: 'H.264',
       sourceNetwork: 'eMule Security',
-      category: 'other',
+      // `.iso` sits in AriaNg's *archive* bucket — the shared table is reused
+      // verbatim rather than a second, subtly different one.
+      category: 'archive',
       isDownloadable: true,
       sourceCount: 1,
     });
   });
 
   it('accepts a result that carries nothing but the link', () => {
-    const result = normalizeResult({ ed2kLink: 'ed2k://|file|a.bin|10|ABCDEF|' }, 3);
+    const result = normalizeResult(raw({ ed2kLink: 'ed2k://|file|a.bin|10|ABCDEF|' }), 3);
 
     expect(result).not.toBeNull();
     expect(result?.filename).toBe(UNKNOWN_FILENAME);
@@ -69,9 +87,9 @@ describe('normalizeResult', () => {
 
   it('coerces a decimal string length to a number', () => {
     expect(normalizeResult({ ...COMPLETE }, 0)?.fileLength).toBe(3518384816);
-    expect(normalizeResult({ ed2kLink: 'x', filename: 'a.bin', fileLength: '42' }, 0)?.fileLength).toBe(42);
+    expect(normalizeResult(raw({ ed2kLink: 'x', name: 'a.bin', length: '42' }), 0)?.fileLength).toBe(42);
     // Some builds send a JSON number rather than the aria2-style string.
-    expect(normalizeResult({ ed2kLink: 'x', filename: 'a.bin', fileLength: 42 }, 0)?.fileLength).toBe(42);
+    expect(normalizeResult(raw({ ed2kLink: 'x', name: 'a.bin', length: 42 }), 0)?.fileLength).toBe(42);
   });
 
   it('collapses an unusable length to 0 instead of rendering NaN', () => {
@@ -79,11 +97,11 @@ describe('normalizeResult', () => {
     expect(toFileLength('-5')).toBe(0);
     expect(toFileLength(Number.NaN)).toBe(0);
     expect(toFileLength(undefined)).toBe(0);
-    expect(normalizeResult({ ed2kLink: 'x', filename: 'a.bin', fileLength: 'nope' }, 0)?.fileLength).toBe(0);
+    expect(normalizeResult(raw({ ed2kLink: 'x', name: 'a.bin', length: 'nope' }), 0)?.fileLength).toBe(0);
   });
 
   it('marks a result without an ed2kLink as not downloadable', () => {
-    const result = normalizeResult({ filename: 'mystery.bin', fileHash: 'DEADBEEF', fileLength: '7' }, 1);
+    const result = normalizeResult(raw({ name: 'mystery.bin', hash: 'DEADBEEF', length: '7' }), 1);
 
     expect(result?.isDownloadable).toBe(false);
     expect(result?.ed2kLink).toBeUndefined();
@@ -92,24 +110,21 @@ describe('normalizeResult', () => {
   });
 
   it('never synthesises a link', () => {
-    const result = normalizeResult({ filename: 'mystery.bin', fileLength: '7' }, 0);
+    const result = normalizeResult(raw({ name: 'mystery.bin', length: '7' }), 0);
 
-    expect(result?.ed2kLink).toBeUndefined();
-    expect('ed2kLink' in (result as NormalizedEd2kResult)).toBe(true);
     expect(result?.ed2kLink).toBeFalsy();
+    expect(result?.isDownloadable).toBe(false);
   });
 
-  it('reads the manual\'s `hash` / `name` / `length` spelling too', () => {
-    // The manual lists hash / name / length; Aria2Ed2kSearchResult models the
-    // same data as fileHash / filename / fileLength. Both must work.
+  it('accepts the legacy fileHash / filename / fileLength spelling too', () => {
     const result = normalizeResult(
-      {
+      raw({
         ed2kLink: 'ed2k://|file|film.mkv|100|ABCD|',
-        hash: 'ABCD',
-        name: 'film.mkv',
-        length: '100',
+        fileHash: 'ABCD',
+        filename: 'film.mkv',
+        fileLength: '100',
         sourceCount: '6',
-      },
+      }),
       0,
     );
 
@@ -117,6 +132,12 @@ describe('normalizeResult', () => {
     expect(result?.filename).toBe('film.mkv');
     expect(result?.fileLength).toBe(100);
     expect(result?.sourceCount).toBe(6);
+  });
+
+  it('prefers the manual spelling when both are present', () => {
+    const result = normalizeResult(raw({ name: 'canonical.bin', filename: 'legacy.bin' }), 0);
+
+    expect(result?.filename).toBe('canonical.bin');
   });
 
   it('seeds sourceCount from the server, never below one', () => {
@@ -131,15 +152,15 @@ describe('normalizeResult', () => {
     expect(normalizeResult('nope' as never, 0)).toBeNull();
     expect(normalizeResult(42 as never, 0)).toBeNull();
     // Nothing to show, nothing to dedupe on, nothing to download.
-    expect(normalizeResult({} as never, 0)).toBeNull();
-    expect(normalizeResult({ mediaCodec: 'H.264' } as never, 0)).toBeNull();
+    expect(normalizeResult(raw({}), 0)).toBeNull();
+    expect(normalizeResult(raw({ mediaCodec: 'H.264' }), 0)).toBeNull();
     // …but a name alone is enough to render.
-    expect(normalizeResult({ filename: 'only-a-name.bin' }, 0)).not.toBeNull();
+    expect(normalizeResult(raw({ name: 'only-a-name.bin' }), 0)).not.toBeNull();
   });
 
   it('derives the category through classifyExtension', () => {
     const category = (filename: string) =>
-      normalizeResult({ ed2kLink: 'x', filename, fileLength: '1' }, 0)?.category;
+      normalizeResult(raw({ ed2kLink: 'x', name: filename, length: '1' }), 0)?.category;
 
     expect(category('Some.Movie.2024.mkv')).toBe('video');
     expect(category('Track.mp3')).toBe('audio');
@@ -181,8 +202,8 @@ describe('normalizeResults', () => {
       42,
       [],
       { ...COMPLETE },
-      { mediaCodec: 'orphan' },
-      { filename: 'second.bin', fileLength: '10' },
+      raw({ mediaCodec: 'orphan' }),
+      raw({ name: 'second.bin', length: '10' }),
     ]);
 
     expect(results).toHaveLength(2);
@@ -197,7 +218,7 @@ describe('normalizeResults', () => {
   });
 
   it('keeps keys stable across repeated normalisation of the same data', () => {
-    const payload = [COMPLETE, { filename: 'second.bin', fileLength: '10' }];
+    const payload = [COMPLETE, raw({ name: 'second.bin', length: '10' })];
 
     const first = normalizeResults(payload);
     const second = normalizeResults(payload);
@@ -208,7 +229,7 @@ describe('normalizeResults', () => {
   });
 
   it('keys a link-less row by hash + length and an identity-less row by index', () => {
-    expect(resultKey('ed2k://|file|a|1|AA|', 'AA', 1, 0)).toBe('ed2k://|file|a|1|AA|/');
+    expect(resultKey('ed2k://|file|a|1|AA|', 'AA', 1, 0)).toBe('ed2k://|file|a|1|AA|');
     expect(resultKey(undefined, 'AA', 12, 7)).toBe('hash:aa:12');
     expect(resultKey(undefined, undefined, 12, 7)).toBe('anon:7');
   });
@@ -216,21 +237,21 @@ describe('normalizeResults', () => {
 
 describe('dedupeResults', () => {
   const one = normalizeResult(
-    { ...COMPLETE, sourceNetwork: 'server A', sourceCount: '1' },
+    raw({ ...COMPLETE, sourceNetwork: 'server A', sourceCount: '1' }),
     0,
   ) as NormalizedEd2kResult;
 
   it('merges on fileHash and counts the sources', () => {
     const two = normalizeResult(
-      {
+      raw({
         // Same file, different link and different network: exactly what ED2K
         // returns when several servers index the same hash.
         ed2kLink: 'ed2k://|file|ubuntu-24.04.iso|3518384816|A1B2C3D4E5F60718293A4B5C6D7E8F90|/mirror',
-        filename: 'ubuntu-24.04.iso',
-        fileLength: '3518384816',
-        fileHash: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',
+        name: 'ubuntu-24.04.iso',
+        length: '3518384816',
+        hash: 'A1B2C3D4E5F60718293A4B5C6D7E8F90',
         sourceNetwork: 'server B',
-      },
+      }),
       1,
     ) as NormalizedEd2kResult;
 
@@ -245,13 +266,11 @@ describe('dedupeResults', () => {
   });
 
   it('merges on the link when there is no hash', () => {
-    const a = normalizeResult({ ed2kLink: 'ed2k://|file|a|1|AA|', filename: 'a', fileLength: '1' }, 0) as NormalizedEd2kResult;
-    const b = normalizeResult({ ed2kLink: 'ed2k://|file|a|1|AA|', filename: 'a', fileLength: '1' }, 1) as NormalizedEd2kResult;
+    const a = normalizeResult(raw({ ed2kLink: 'ed2k://|file|a|1|AA|', name: 'a', length: '1' }), 0) as NormalizedEd2kResult;
+    const b = normalizeResult(raw({ ed2kLink: 'ed2k://|file|a|1|AA|', name: 'a', length: '1' }), 1) as NormalizedEd2kResult;
 
-    const merged = dedupeResults([a, b]);
-
-    expect(merged).toHaveLength(1);
-    expect(merged[0].sourceCount).toBe(2);
+    expect(dedupeResults([a, b])).toHaveLength(1);
+    expect(dedupeResults([a, b])[0].sourceCount).toBe(2);
   });
 
   it('sums the server-reported source counts of the entries it merges', () => {
@@ -262,8 +281,8 @@ describe('dedupeResults', () => {
   });
 
   it('never merges rows it cannot identify', () => {
-    const a = normalizeResult({ filename: 'a.bin', fileLength: '1' }, 0) as NormalizedEd2kResult;
-    const b = normalizeResult({ filename: 'b.bin', fileLength: '2' }, 1) as NormalizedEd2kResult;
+    const a = normalizeResult(raw({ name: 'a.bin', length: '1' }), 0) as NormalizedEd2kResult;
+    const b = normalizeResult(raw({ name: 'b.bin', length: '2' }), 1) as NormalizedEd2kResult;
 
     expect(dedupeResults([a, b])).toHaveLength(2);
   });
@@ -273,15 +292,13 @@ describe('dedupeResults', () => {
     expect(dedupeResults(undefined as never)).toEqual([]);
   });
 
-  it('fills a blank field from the duplicate without losing the key', () => {
-    const withLink = normalizeResult({ ed2kLink: 'ed2k://|file|a|1|AA|' }, 0) as NormalizedEd2kResult;
+  it('does not invent a field on a row the duplicate cannot fill', () => {
+    const withLink = normalizeResult(raw({ ed2kLink: 'ed2k://|file|a|1|AA|' }), 0) as NormalizedEd2kResult;
     const withCodec = normalizeResult(
-      { filename: 'a.bin', fileLength: '1', fileHash: 'AA', mediaCodec: 'FLAC' },
+      raw({ name: 'a.bin', length: '1', hash: 'AA', mediaCodec: 'FLAC' }),
       1,
     ) as NormalizedEd2kResult;
 
-    // Identity differs (link vs hash), so they stay separate — but the codec
-    // only exists on the second entry, so nothing may be invented on the first.
     expect(withLink.mediaCodec).toBeUndefined();
     expect(withCodec.mediaCodec).toBe('FLAC');
   });
@@ -289,12 +306,10 @@ describe('dedupeResults', () => {
 
 describe('mergeResults', () => {
   const one = normalizeResult({ ...COMPLETE, sourceCount: '1' }, 0) as NormalizedEd2kResult;
-  const two = normalizeResult({ filename: 'second.bin', fileLength: '10' }, 1) as NormalizedEd2kResult;
+  const two = normalizeResult(raw({ name: 'second.bin', length: '10' }), 1) as NormalizedEd2kResult;
 
   it('appends new rows', () => {
-    const merged = mergeResults([one], [two]);
-
-    expect(merged.map((r) => r.key)).toEqual([one.key, two.key]);
+    expect(mergeResults([one], [two]).map((r) => r.key)).toEqual([one.key, two.key]);
   });
 
   it('is idempotent, because the server re-sends the accumulated set', () => {
@@ -309,9 +324,9 @@ describe('mergeResults', () => {
   });
 
   it('lets a later poll complete a partial row without changing its key', () => {
-    const partial = normalizeResult({ fileHash: 'AA', filename: 'a.bin' }, 0) as NormalizedEd2kResult;
+    const partial = normalizeResult(raw({ hash: 'AA', name: 'a.bin' }), 0) as NormalizedEd2kResult;
     const completed = normalizeResult(
-      { fileHash: 'AA', filename: 'a.bin', fileLength: '99', mediaCodec: 'Opus' },
+      raw({ hash: 'AA', name: 'a.bin', length: '99', mediaCodec: 'Opus' }),
       0,
     ) as NormalizedEd2kResult;
 

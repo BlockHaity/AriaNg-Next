@@ -60,7 +60,8 @@ function unsupportedReasonKey(reason: Ed2kSupportReason | undefined): string {
 export default function Ed2kSearchPage() {
   const t = useLocalTranslate();
   const search = useEd2kSearch();
-  const { start, stop, clear, support, supportReason, status, keyword, results, moreResults, error } = search;
+  const { start, stop, clear, refreshNow, support, supportReason, status, keyword, results, moreResults, error } =
+      search;
 
   const [keywordInput, setKeywordInput] = useState(() =>
     parseKeywordFromHash(typeof window === 'undefined' ? undefined : window.location.hash) ?? '',
@@ -181,7 +182,12 @@ export default function Ed2kSearchPage() {
             </p>
           </section>
 
-          <ResultsTable state={tableState} options={options} onRetry={onRetry} />
+          <ResultsTable
+            state={tableState}
+            options={options}
+            onRetry={onRetry}
+            onRefresh={refreshNow}
+          />
         </>
       ) : null}
     </div>

@@ -22,16 +22,19 @@
  * properties. That is exactly what the assertions below read.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 
+import type { Aria2Status } from '@/rpc/types';
 import { selectTaskFiles } from '@/store/commands';
 import { useSettingsStore } from '@/store/settings';
 import { FilesTab, isFileSelectionActive, resetFileSelection, withIndexesSelection } from '@/pages/task-detail/tabs/FilesTab';
 import type { DirectoryNode, FileNode, FileTreeNode, FileTypeInfo, NormalizedTask } from '@/domain/types';
 
 vi.mock('@/store/commands', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/store/commands')>();
+  // Only `selectTaskFiles` is stubbed; the rest of the module has to keep its
+  // real behaviour for the import graph to load.
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     selectTaskFiles: vi.fn(async () => {}),
@@ -39,19 +42,40 @@ vi.mock('@/store/commands', async (importOriginal) => {
 });
 
 /*
- * mdui's programmatic dialog / snackbar helpers register the whole component
- * family (`<mdui-dialog>` pulls in `<mdui-button>`, `<mdui-checkbox>`,
- * `<mdui-dropdown>`, …) as real custom elements. Their Lit implementations reach
- * for shadow-DOM behaviour jsdom does not fully provide, which surfaces as
- * unhandled rejections from `firstUpdated`.
+ * `<mdui-checkbox>` and `<mdui-dropdown>` are real Lit components whose
+ * `connectedCallback` / `firstUpdated` dereference refs that jsdom has not
+ * populated yet (`Checkbox.focusElement`, `Dropdown.triggerElement`), which
+ * surfaces as unhandled rejections from floating-ui and makes the whole file
+ * exit non-zero.
  *
- * Stubbing the two function modules keeps the elements undefined, i.e. inert
- * unknown elements — which is all these tests need, because the wrappers in
- * `@/ui/mdui` communicate exclusively through plain DOM events and JS
- * properties.
+ * Both tags are therefore *not upgraded* in this environment: they stay inert
+ * unknown elements. That is all these tests need, because the wrappers in
+ * `@/ui/mdui` communicate through plain DOM events and JS properties — which is
+ * exactly what the helpers below drive (`checked` / `indeterminate` are written
+ * as properties, and the handlers answer real `click` / `change` events).
+ *
+ * `vi.hoisted` runs before the module graph is imported, which is required:
+ * `customElements.define` has to be intercepted before mdui registers anything.
  */
-vi.mock('mdui/functions/dialog.js', () => ({ dialog: () => document.createElement('div') }));
-vi.mock('mdui/functions/snackbar.js', () => ({ snackbar: () => document.createElement('div') }));
+const UNUPGRADED = vi.hoisted(() => {
+  const blocked = new Set(['mdui-checkbox', 'mdui-dropdown']);
+  const original = customElements.define.bind(customElements);
+
+  customElements.define = function patchedDefine(
+    name: string,
+    constructor_: CustomElementConstructor,
+    options?: ElementDefinitionOptions,
+  ): void {
+    if (blocked.has(name)) return;
+    original(name, constructor_, options);
+  } as typeof customElements.define;
+
+  return () => {
+    customElements.define = original;
+  };
+});
+
+afterAll(UNUPGRADED);
 
 const selectFileMock = vi.mocked(selectTaskFiles);
 
@@ -157,7 +181,7 @@ function makeTask(overrides: Partial<NormalizedTask> = {}): NormalizedTask {
 }
 
 /** Three files: two video, one archive — enough for the category filters. */
-function flatTask(status = 'paused'): NormalizedTask {
+function flatTask(status: Aria2Status = 'paused'): NormalizedTask {
   const files = [file(0, 'one.mp4', true), file(1, 'two.mp4', true), file(2, 'pack.zip', false)];
   return makeTask({
     status,
@@ -168,7 +192,7 @@ function flatTask(status = 'paused'): NormalizedTask {
 }
 
 /** `season/episode.mkv` — one directory containing one file. */
-function treeTask(status = 'paused'): NormalizedTask {
+function treeTask(status: Aria2Status = 'paused'): NormalizedTask {
   const episode = { ...file(0, 'episode.mkv', true), isDir: false as const, relativePath: 'season', level: 1 };
   const directory = dir(-1, 'season', 'season', [episode], [], 0);
 
@@ -365,7 +389,7 @@ describe('FilesTab — (Choose Files) link', () => {
     expect(query(container)).not.toBeNull();
   });
 
-  it.each(['active', 'complete', 'error', 'removed'])('is hidden while %s', (status) => {
+  it.each<Aria2Status>(['active', 'complete', 'error', 'removed'])('is hidden while %s', (status) => {
     const { container } = render(<FilesTab task={flatTask(status)} />);
     expect(query(container)).toBeNull();
   });
@@ -652,14 +676,23 @@ describe('FilesTab — checkbox availability', () => {
     const { container } = render(<FilesTab task={flatTask('active')} />);
 
     for (const name of ['one.mp4', 'two.mp4', 'pack.zip']) {
-      expect(checkboxOf(container, name)).toHaveProperty('disabled', true);
+      expect(checkboxOf(container, name).hasAttribute('disabled')).toBe(true);
     }
   });
 
   it('enables the checkboxes for a waiting or paused task', () => {
     const { container } = render(<FilesTab task={flatTask('waiting')} />);
 
-    expect(checkboxOf(container, 'one.mp4')).toHaveProperty('disabled', false);
+    expect(checkboxOf(container, 'one.mp4').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('disables them for a single-file task (aria2 refuses select-file there)', () => {
+    const only = file(0, 'only.mp4', true);
+    const { container } = render(
+      <FilesTab task={makeTask({ files: [only], fileTree: [{ ...only, isDir: false }] })} />,
+    );
+
+    expect(checkboxOf(container, 'only.mp4').hasAttribute('disabled')).toBe(true);
   });
 });
 

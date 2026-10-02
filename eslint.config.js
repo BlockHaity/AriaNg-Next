@@ -62,6 +62,31 @@ export default tseslint.config(
     },
   },
   {
+    // Build-time and CI scripts run under Node, not the browser. `js.configs.recommended`
+    // supplies `console`, `process` and `URL` for .mjs already, so only the Node
+    // built-ins it does not declare are listed here (redeclaring the others
+    // would trip `no-redeclare`).
+    files: ['**/*.mjs', 'scripts/**/*.{ts,js,mjs}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: {
+        Buffer: 'readonly',
+        TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
+    // The Node scripts above re-declare globals that an earlier config already
+    // provides; silence only that conflict rather than dropping the definitions.
+    files: ['**/*.mjs', 'scripts/**/*.{ts,js,mjs}'],
+    rules: {
+      'no-redeclare': 'off',
+    },
+  },
+  {
     files: ['**/*.{test,spec}.{ts,tsx}', 'src/test/**'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',

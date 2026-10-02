@@ -1,4 +1,6 @@
 /// <reference types="vitest/config" />
+import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -17,6 +19,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
  */
 export default defineConfig(({ mode }) => {
   const isSingle = mode === 'single';
+  const outDir = isSingle ? 'dist-single' : 'dist';
 
   return {
     // Relative base is what makes "run from any directory" work.
@@ -91,7 +94,50 @@ export default defineConfig(({ mode }) => {
           ]),
       ...(isSingle
         ? [
-            viteSingleFile({ removeViteModuleLoader: true }),
+            viteSingleFile({
+              /**
+               * Left **off** deliberately. The option cuts a byte range out of
+               * the bundle assuming Vite's modulepreload polyfill is there; with
+               * `build.modulePreload: false` there is nothing to remove, and
+               * enabling it swallows the opening `(function(){` of the IIFE —
+               * leaving a file that ends in `})();` with no matching opener,
+               * which is a syntax error in every browser.
+               */
+              removeViteModuleLoader: false,
+            }),
+            /**
+             * Emit a **classic** inline script instead of `<script type="module">`.
+             *
+             * The single-file output is already an IIFE with every chunk inlined
+             * (`inlineDynamicImports`), so it needs no module semantics. Classic
+             * scripts are unambiguously allowed to run from `file://`, whereas
+             * module scripts there depend on how the browser treats CORS for the
+             * null origin. Removing the doubt is worth the one line.
+             */
+            {
+              name: 'ariang-next:classic-inline-script',
+              enforce: 'post' as const,
+              /**
+               * Rewrites the emitted file after everything else has run.
+               *
+               * Both `transformIndexHtml` and `writeBundle` lose the race with
+               * `vite-plugin-singlefile`, which writes the inlined
+               * `<script type="module">` tag itself; touching the file on disk in
+               * `closeBundle` is the only hook guaranteed to see the final bytes.
+               */
+              closeBundle() {
+                const file = path.resolve(outDir, 'index.html');
+                if (!fs.existsSync(file)) return;
+                const html = fs.readFileSync(file, 'utf8');
+                const patched = html.replace(
+                  // Handles every attribute combination, including Vite's
+                  // `<script type="module" crossorigin>`.
+                  /<script\b([^>]*?)\stype="module"([^>]*)>/gi,
+                  '<script$1$2>',
+                );
+                if (patched !== html) fs.writeFileSync(file, patched);
+              },
+            },
           ]
         : []),
     ],
@@ -102,7 +148,18 @@ export default defineConfig(({ mode }) => {
 
     build: {
       target: 'es2022',
-      outDir: isSingle ? 'dist-single' : 'dist',
+      outDir,
+      /**
+       * Do not emit Vite's modulepreload polyfill.
+       *
+       * It is only useful for the multi-chunk standard build, and in the
+       * single-file target it is actively harmful: `vite-plugin-singlefile`'s
+       * `removeViteModuleLoader` strips it by cutting a byte range, which also
+       * eats the opening `(function(){` of the IIFE and leaves a file that ends
+       * in `})();` with nothing to close — a syntax error in every browser.
+       * Emitting no polyfill removes the problem entirely.
+       */
+      modulePreload: false,
       emptyOutDir: true,
       cssCodeSplit: !isSingle,
       assetsInlineLimit: isSingle ? 1024 * 1024 : 4096,

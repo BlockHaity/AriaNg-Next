@@ -15,7 +15,13 @@ import type {
 } from '@/config/rpc-constants';
 
 export interface FileTypeInfo {
+  /** aria2's file index, parsed to a number. Already **1-based**. */
   index: number;
+  /**
+   * The value to pass to `select-file`. Identical to `index`, because aria2's
+   * own file index is 1-based already. `0` marks a synthetic directory node,
+   * which is never selectable by index.
+   */
   aria2Index: number;
   fileName: string;
   path: string;

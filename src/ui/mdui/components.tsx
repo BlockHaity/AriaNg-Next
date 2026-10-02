@@ -1349,7 +1349,7 @@ export function MduiDropdown(props: MduiDropdownProps) {
       close-delay={closeDelay}
       trigger="click"
     >
-      {cloneElement(trigger as ReactElement, { slot: 'trigger' })}
+      {cloneElement(trigger as ReactElement<{ slot?: string }>, { slot: 'trigger' })}
       {items}
     </mdui-dropdown>
   );

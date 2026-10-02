@@ -145,19 +145,24 @@ export const GLOBAL_SETTINGS_SECTIONS: readonly SettingsSection[] = [
  *
  * AriaNg marked the four interval rows, the RPC list order and every RPC
  * profile row with an asterisk meaning "needs a page reload". That was an
- * artefact of its architecture: the intervals were seven independent Angular
- * `$interval`s created once at bootstrap, and switching an RPC profile called
+ * artefact of its architecture: the seven `$interval`s were created once at
+ * bootstrap and never resized, and switching an RPC profile called
  * `$window.location.reload()`.
  *
- * Here the scheduler re-reads every interval on each tick
- * (`scheduler.updateInterval`) and the RPC store hot-swaps the transport
- * (`useRpcStore.getState().applyProfile`), so those six rows apply the moment
- * they are changed. What is left:
+ * Here `app/BootstrapGate.tsx` subscribes to the settings store and calls
+ * `scheduler.updateInterval(...)` for the three polling jobs, and the RPC store
+ * hot-swaps the transport through `applyProfile(...)`. So those rows apply the
+ * moment they are changed. What is left:
  *
  * - **Language** — the translation bundle is loaded once at bootstrap.
  * - **Import Settings** — replaces the whole options blob, including the
  *   decoded secrets, so the shell rebuilds from storage on the next boot.
  * - **Reset Settings** — same, plus it re-derives every default.
+ *
+ * `webSocketReconnectInterval` is the one interval the scheduler does not own:
+ * it belongs to the RPC transport and is read when a connection is (re)opened,
+ * so a change lands on the next reconnect instead of the next tick. That is
+ * still no reload, which is why it is not in this list.
  */
 export const RELOAD_REQUIRED_KEYS: readonly SettingsFieldKey[] = ['language', 'importExport', 'tips'];
 

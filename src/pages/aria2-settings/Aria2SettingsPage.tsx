@@ -112,11 +112,9 @@ export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
       {showAria2NextBanner ? (
         <p className="aria2-settings__banner" role="status">
           {t(
-            `The connected aria2 does not report itself as aria2-next; ${
-              ARIA2_NEXT_ONLY_GROUPS.includes(routeGroup)
-                ? 'this group'
-                : 'the ED2K and media option groups'
-            } may not be supported.`,
+            ARIA2_NEXT_ONLY_GROUPS.includes(routeGroup)
+              ? 'The connected aria2 is not aria2-next, so this group may not be supported.'
+              : 'The connected aria2 is not aria2-next, so the ED2K and media option groups may not be supported.',
           )}
         </p>
       ) : null}

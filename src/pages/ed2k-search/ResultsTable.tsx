@@ -28,7 +28,7 @@ import { getAria2ClientOrNull } from '@/rpc';
 import type { Aria2OptionMap } from '@/rpc/types';
 import { copyText } from '@/utils/clipboard';
 import { appUrl, Routes } from '@/app/route-paths';
-import { MduiButton, MduiCheckbox, MduiIcon, MduiSnackbar } from '@/ui/mdui';
+import { MduiButton, MduiCheckbox, MduiIcon, MduiIconButton, MduiSnackbar } from '@/ui/mdui';
 import type { NormalizedEd2kResult } from './format';
 import { ResultRow } from './ResultRow';
 import { ResultDetailDialog } from './ResultDetailDialog';
@@ -46,6 +46,8 @@ export interface ResultsTableProps {
   /** Advanced search options; `dir` is forwarded to `addUri` when present. */
   options?: Aria2OptionMap;
   onRetry?: () => void;
+  /** Re-reads the current search's results once, without restarting it. */
+  onRefresh?: () => void;
 }
 
 interface SortState {
@@ -95,7 +97,7 @@ function compareValues(a: NormalizedEd2kResult, b: NormalizedEd2kResult, key: Ed
   return left.localeCompare(right, undefined, { sensitivity: 'base', numeric: true });
 }
 
-export function ResultsTable({ state, options, onRetry }: ResultsTableProps) {
+export function ResultsTable({ state, options, onRetry, onRefresh }: ResultsTableProps) {
   const t = useLocalTranslate();
   const { status, error, results, moreResults, keyword } = state;
 
@@ -351,6 +353,13 @@ export function ResultsTable({ state, options, onRetry }: ResultsTableProps) {
           <span className="ed2k-results__selected" data-testid="ed2k-selected-count">
             {t('ed2k.selectedCount', { count: selected.size })}
           </span>
+
+          <MduiIconButton
+            icon="refresh"
+            label={t('ed2k.refresh')}
+            disabled={keyword.trim() === ''}
+            onClick={() => onRefresh?.()}
+          />
 
           <MduiButton
             variant="filled"

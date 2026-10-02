@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { describeError, isUnauthorized, mapRpcError } from '@/rpc/errors';
 import type { Aria2Client } from '@/rpc/contract';
 import { useRpcStore } from '@/store/rpc-store';
-import { mergeResults, normalizeResults } from './format';
+import { dedupeResults, mergeResults, normalizeResults } from './format';
 import type { NormalizedEd2kResult } from './format';
 
 /** How often the results are re-read while a search is running. */
@@ -257,7 +257,10 @@ export function useEd2kSearch(options: UseEd2kSearchOptions = {}): Ed2kSearchSta
         return;
       }
 
-      const incoming = normalizeResults(result.data?.results);
+      // `dedupeResults` first: within ONE snapshot several sources reporting the
+      // same file must add up. `mergeResults` then folds it into what is shown,
+      // where re-sending the accumulated set must be idempotent instead.
+      const incoming = dedupeResults(normalizeResults(result.data?.results));
       const moreResults = result.data?.moreResults === true;
 
       setState((previous) => ({

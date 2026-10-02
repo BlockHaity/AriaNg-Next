@@ -23,9 +23,12 @@ import type { RpcProfile } from '@/config/types';
 import { createDefaultSettings } from '@/config/defaults';
 import { i18n } from '@/i18n';
 import { useProfilesStore } from '@/store/profiles';
+import { useRpcStore } from '@/store/rpc-store';
 import { flushSettingsPersist, useSettingsStore } from '@/store/settings';
-import { resetUiStore } from '@/store/ui';
+import { resetUiStore, useUiStore } from '@/store/ui';
 import AriaNgSettingsPage from '../AriaNgSettingsPage';
+import { EXPORT_COMMAND_API_EVENT, parseRequestHeaderLines } from '../settings-ariang/RpcProfileTab';
+import type { ExportCommandApiDetail } from '../settings-ariang/RpcProfileTab';
 
 /* ------------------------------------------------------------------ */
 /* mdui stand-ins                                                      */
@@ -317,6 +320,156 @@ describe('RPC profile fields', () => {
 
     expect(container.textContent).toContain('X-Broken: a:b:c');
     expect(container.textContent).toContain('each header line must contain exactly one');
+    // The valid line is not reported as rejected.
+    expect(container.textContent).not.toContain('X-Token: abc,');
+  });
+
+  it('parses header lines exactly like the http transport does', () => {
+    expect(parseRequestHeaderLines('X-A: 1\nX-B: 2')).toEqual({
+      accepted: ['X-A: 1', 'X-B: 2'],
+      rejected: [],
+    });
+    // A value may not contain a colon, and a line may not have none.
+    expect(parseRequestHeaderLines('X-A: a:b\nno-colon\n\n  ')).toEqual({
+      accepted: [],
+      rejected: ['X-A: a:b', 'no-colon'],
+    });
+  });
+
+  it('uses host:port as the alias placeholder', () => {
+    seedSettings({ rpcHost: '10.0.0.9', rpcPort: '6801' });
+    const { container } = renderPage();
+
+    expect(
+      container.querySelector('mdui-text-field[label="Aria2 RPC Alias"]')?.getAttribute('placeholder'),
+    ).toBe('10.0.0.9:6801');
+  });
+
+  it('writes an edited field straight into the profile store', async () => {
+    seedSettings({ extendRpcServers: [makeProfile()] });
+    const { container } = renderPage();
+
+    const host = container.querySelector(
+      'mdui-tab-panel[value="rpc1"] mdui-text-field[label="Host"]',
+    ) as (Element & { value: string }) | null;
+
+    await act(async () => {
+      if (host) host.value = '192.168.0.5';
+      host?.dispatchEvent(new CustomEvent('input'));
+    });
+
+    expect(useSettingsStore.getState().settings.extendRpcServers[0]?.rpcHost).toBe('192.168.0.5');
+  });
+
+  it('activates a profile by hot-applying it, without a reload', async () => {
+    const reload = stubLocation('http:');
+    const applyProfile = vi.fn();
+    const original = useRpcStore.getState().applyProfile;
+    useRpcStore.setState({ applyProfile });
+
+    try {
+      seedSettings({ rpcHost: '127.0.0.1', extendRpcServers: [makeProfile({ rpcId: 'p2', rpcAlias: 'nas' })] });
+      const { container } = renderPage();
+
+      const activate = [
+        ...(container.querySelector('mdui-tab-panel[value="rpc1"]')?.querySelectorAll('mdui-button') ?? []),
+      ].find((node) => node.textContent === 'Activate');
+      await act(async () => {
+        fireEvent.click(activate as Element);
+      });
+
+      // Promoted to the default slot…
+      expect(useSettingsStore.getState().settings.rpcHost).toBe('10.0.0.9');
+      // …with the previous default kept as an entry…
+      expect(useSettingsStore.getState().settings.extendRpcServers[0]?.rpcAlias).toBe('');
+      // …and the transport swapped in place, no reload.
+      expect(applyProfile).toHaveBeenCalledTimes(1);
+      expect(applyProfile.mock.calls[0]?.[0]).toMatchObject({ rpcHost: '10.0.0.9', rpcAlias: 'nas' });
+      expect(reload).not.toHaveBeenCalled();
+    } finally {
+      useRpcStore.setState({ applyProfile: original });
+    }
+  });
+
+  it('disables Activate on the default profile', () => {
+    const { container } = renderPage();
+    const activate = buttonByText(container, 'Activate');
+    expect(activate?.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('signals the Export Command API action as a window event', async () => {
+    const detail = vi.fn();
+    window.addEventListener(EXPORT_COMMAND_API_EVENT, detail as EventListener);
+
+    try {
+      const { container } = renderPage();
+      const exportButton = buttonByText(container, 'Export');
+      await act(async () => {
+        fireEvent.click(exportButton as Element);
+      });
+
+      expect(detail).toHaveBeenCalledTimes(1);
+      const event = detail.mock.calls[0]?.[0] as CustomEvent<ExportCommandApiDetail>;
+      expect(event.detail.source).toBe('settings');
+      expect(event.detail.profile.isDefault).toBe(true);
+    } finally {
+      window.removeEventListener(EXPORT_COMMAND_API_EVENT, detail as EventListener);
+    }
+  });
+});
+
+describe('swipe gestures', () => {
+  /** Moves to a tab by simulating the swipe the shell would deliver. */
+  async function swipe(side: 'left' | 'right'): Promise<boolean> {
+    const handler = useUiStore.getState().swipeActions[side === 'left' ? 'extendLeftSwipe' : 'extendRightSwipe'];
+    if (!handler) return false;
+
+    let handled = false;
+    await act(async () => {
+      handled = handler();
+    });
+    return handled;
+  }
+
+  function activeTab(container: HTMLElement): string | null {
+    return (container.querySelector('mdui-tabs') as (Element & { value?: string }) | null)?.value ?? null;
+  }
+
+  it('cycles forward from Global and back again, ending on Global', async () => {
+    // default + two extended => three RPC tabs, `rpc0` … `rpc2`.
+    seedSettings({ extendRpcServers: [makeProfile(), makeProfile({ rpcId: 'p2' })] });
+    const { container } = renderPage();
+
+    expect(await swipe('left')).toBe(true);
+    await waitFor(() => expect(activeTab(container)).toBe('rpc0'));
+
+    expect(await swipe('left')).toBe(true);
+    await waitFor(() => expect(activeTab(container)).toBe('rpc1'));
+
+    expect(await swipe('left')).toBe(true);
+    await waitFor(() => expect(activeTab(container)).toBe('rpc2'));
+
+    // Past the last tab there is nothing to extend.
+    expect(await swipe('left')).toBe(false);
+
+    // Right from the first RPC tab returns to Global, exactly like AriaNg.
+    expect(await swipe('right')).toBe(true);
+    await waitFor(() => expect(activeTab(container)).toBe('rpc1'));
+    expect(await swipe('right')).toBe(true);
+    await waitFor(() => expect(activeTab(container)).toBe('rpc0'));
+    expect(await swipe('right')).toBe(true);
+    await waitFor(() => expect(activeTab(container)).toBe('global'));
+    expect(await swipe('right')).toBe(false);
+  });
+
+  it('unregisters its handlers on unmount', () => {
+    seedSettings({ extendRpcServers: [makeProfile()] });
+    const { unmount } = renderPage();
+    expect(useUiStore.getState().swipeActions.extendLeftSwipe).toBeTypeOf('function');
+
+    unmount();
+    expect(useUiStore.getState().swipeActions.extendLeftSwipe).toBeUndefined();
+    expect(useUiStore.getState().swipeActions.extendRightSwipe).toBeUndefined();
   });
 });
 

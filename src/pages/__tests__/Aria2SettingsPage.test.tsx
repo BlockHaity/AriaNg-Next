@@ -21,6 +21,7 @@ import { OPTION_GROUP_ROUTES } from '@/config/types';
 import type { Aria2Client } from '@/rpc/contract';
 import { useRpcStore } from '@/store/rpc-store';
 import Aria2SettingsPage from '../aria2-settings/Aria2SettingsPage';
+import { GlobalSpeedLimitDialog } from '../aria2-settings/GlobalSpeedLimitDialog';
 
 vi.mock('@/ui/mdui/registry', () => ({
   MDUI_COMPONENTS: [],
@@ -32,6 +33,15 @@ vi.mock('@/ui/mdui/icons', () => ({
   ICON_TAGS: new Set<string>(),
   hasIcon: () => false,
   icon: () => 'mdui-icon',
+}));
+
+// Registering `<mdui-dialog>` for real would make jsdom run mdui's open
+// animation, which needs `Element.animate` and blows up after the test ends.
+vi.mock('mdui/functions/dialog.js', () => ({
+  dialog: () => document.createElement('div'),
+}));
+vi.mock('mdui/functions/snackbar.js', () => ({
+  snackbar: () => document.createElement('div'),
 }));
 
 /* ------------------------------------------------------------------ */
@@ -276,17 +286,76 @@ describe('saving', () => {
   });
 });
 
+describe('aria2-next options', () => {
+  it('flags the rows that only aria2-next knows', async () => {
+    const { container } = renderGroup('media');
+    await waitFor(() => expect(getGlobalOption).toHaveBeenCalled());
+
+    // `media` was documented in docs/media-downloads.md, never in the manual.
+    const notes = [...container.querySelectorAll('.aria2-settings__note')].map(
+      (node) => node.textContent ?? '',
+    );
+    expect(notes.some((text) => text.includes('requires aria2-next'))).toBe(true);
+  });
+
+  it('keeps the note off a plain aria2 option', async () => {
+    const { container } = renderGroup('basic');
+    await waitFor(() => expect(getGlobalOption).toHaveBeenCalled());
+
+    const row = container.querySelector('[data-option-key="max-concurrent-downloads"]');
+    expect(row?.parentElement?.querySelector('.aria2-settings__note')).toBeNull();
+  });
+});
+
+describe('GlobalRateLimitDialog', () => {
+  it('loads and saves the two quick-settings options', async () => {
+    const { container } = render(<GlobalSpeedLimitDialog open onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(getGlobalOption).toHaveBeenCalledTimes(1);
+    });
+    // The headline reaches mdui as an attribute on the (stubbed) dialog.
+    expect(container.querySelector('mdui-dialog')?.getAttribute('headline')).toBe('Global Rate Limit');
+
+    const rows = [...document.querySelectorAll('[data-option-key]')].map((row) =>
+      row.getAttribute('data-option-key'),
+    );
+    expect(rows).toEqual(['max-overall-download-limit', 'max-overall-upload-limit']);
+
+    await typeInto(document.body, 'max-overall-download-limit', '1M');
+    await waitFor(() => {
+      expect(changeGlobalOption).toHaveBeenCalledWith({ 'max-overall-download-limit': '1M' });
+    });
+  });
+
+  it('renders nothing while closed', () => {
+    render(<GlobalSpeedLimitDialog open={false} onClose={() => {}} />);
+    expect(document.querySelectorAll('[data-option-key]')).toHaveLength(0);
+  });
+});
+
 describe('aria2-next banner', () => {
   it('appears when the daemon is not aria2-next', async () => {
     useRpcStore.setState({
       version: { version: '1.37.0', product: 'aria2', enabledFeatures: [] },
     });
 
-    const { container } = renderGroup('ed2k');
+    const ed2k = renderGroup('ed2k');
     await waitFor(() => {
-      expect(container.querySelector('.aria2-settings__banner')).not.toBeNull();
+      expect(ed2k.container.querySelector('.aria2-settings__banner')).not.toBeNull();
     });
-    expect(container.querySelector('.aria2-settings__banner')?.textContent).toContain('aria2-next');
+    expect(ed2k.container.querySelector('.aria2-settings__banner')?.textContent).toContain(
+      'this group may not be supported',
+    );
+    ed2k.unmount();
+
+    // Any other group names both aria2-next groups instead.
+    const basic = renderGroup('basic');
+    await waitFor(() => {
+      expect(basic.container.querySelector('.aria2-settings__banner')?.textContent).toContain(
+        'ED2K and media option groups',
+      );
+    });
   });
 
   it('stays away on aria2-next', async () => {

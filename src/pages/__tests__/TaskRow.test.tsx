@@ -497,7 +497,7 @@ describe('TaskRow media chip', () => {
   });
 
   it('labels a live stream instead of a percentage', () => {
-    renderRow(makeMediaTask({ live: true, progress: '0', lengthKnown: 'false' }));
+    renderRow(makeMediaTask({ live: 'true', progress: '0', lengthKnown: 'false' }));
     expect(screen.getByTestId('task-media-chip')).toHaveTextContent('Live');
   });
 

@@ -162,7 +162,7 @@ export function RpcProfileTab({ profile, onExportCommandApi, active = false }: R
 
   return (
     <div className="settings-ariang__rpc">
-      <MduiCardish>
+      <RpcProfileRows>
         <SettingRow
           label={t('Aria2 RPC Alias')}
           hint={profile.isDefault ? t('Default') : rpcProfileDisplayName(profile)}
@@ -316,7 +316,7 @@ export function RpcProfileTab({ profile, onExportCommandApi, active = false }: R
             </MduiButton>
           </div>
         </div>
-      </MduiCardish>
+      </RpcProfileRows>
     </div>
   );
 }
@@ -329,8 +329,8 @@ export function RpcProfileTab({ profile, onExportCommandApi, active = false }: R
  * The RPC rows are not grouped into titled cards in AriaNg (one flat table per
  * tab), so this is a plain bordered section rather than `<mdui-card>`.
  */
-function MduiCardish({ children }: { children: ReactNode }) {
-  return <div className="settings-section settings-ariang__rpc-rows">{children}</div>;
+function RpcProfileRows({ children }: { children: ReactNode }) {
+  return <div className="settings-section settings-ariang__rpc-rows" role="group">{children}</div>;
 }
 
 function SettingRow(props: {

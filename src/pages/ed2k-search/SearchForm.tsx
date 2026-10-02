@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { getOptionMeta } from '@/config/aria2-options';
+import type { Aria2Client } from '@/rpc/contract';
 import { useRpcStore } from '@/store/rpc-store';
 import { MduiButton, MduiCollapse, MduiCollapseItem, MduiTextField } from '@/ui/mdui';
 import { ED2K_SEARCH_OPTION_KEYS, optionHint, optionLabel, useLocalTranslate } from './index';
@@ -100,16 +101,18 @@ export function SearchForm(props: SearchFormProps) {
   const t = useLocalTranslate();
   const client = useRpcStore((state) => state.client);
   const [expanded, setExpanded] = useState<string[]>([]);
-  /** The daemon's current global values, used as the placeholders. */
-  const [globals, setGlobals] = useState<Record<string, string>>({});
+  /** The daemon's global options for the *currently attached* client. */
+  const [loaded, setLoaded] = useState<{ client: Aria2Client; options: Record<string, string> } | null>(null);
 
   const running = status === 'starting' || status === 'searching';
 
-  // Re-read whenever the daemon changes: the placeholders would otherwise keep
-  // advertising the previous profile's servers after a hot switch.
+  // Derived rather than reset in an effect: a hot profile swap must not leave
+  // the previous profile's servers sitting in the placeholders.
+  const globals = loaded && loaded.client === client ? loaded.options : {};
+
+  // Re-read whenever the daemon changes.
   useEffect(() => {
     if (!client) {
-      setGlobals({});
       return;
     }
 
@@ -119,12 +122,7 @@ export function SearchForm(props: SearchFormProps) {
       if (cancelled || !result.success) {
         return;
       }
-      const next = result.data ?? {};
-      setGlobals((previous) =>
-        Object.keys(previous).length === 0 && Object.keys(next).length === 0
-          ? previous
-          : next,
-      );
+      setLoaded({ client, options: result.data ?? {} });
     });
 
     return () => {

@@ -75,6 +75,22 @@ export const ED2K_STRINGS: Readonly<Record<string, string>> = {
   'ed2k.error.not-connected': 'aria2 is not connected.',
   'ed2k.error.empty-keyword': 'Enter a keyword to search for.',
 
+  /**
+   * `RPC_ERROR_HINTS` in `src/rpc/errors.ts` maps aria2's English error
+   * literals onto `rpc.error.*` keys, but AriaNg's catalogue only defines
+   * `rpc.error.unauthorized` — so `describeError()` would hand the UI a key that
+   * resolves to *itself*. The fallbacks below are page-local and can be deleted
+   * wholesale once the catalogue defines them.
+   */
+  'rpc.error.cannotConnect': 'Cannot connect to aria2!',
+  'rpc.error.badRequest': 'Bad request',
+  'rpc.error.jsonParseError': 'JSON Parse Error',
+  'rpc.error.secretTokenMismatch': 'Secret token mismatch',
+  'rpc.error.methodNotFound': 'Method not found — this daemon does not implement aria2.ed2kSearch',
+  'rpc.error.invalidGid': 'Invalid GID',
+  'rpc.error.noSuchFile': 'No such file or directory',
+  'rpc.error.rpcProfileChanged': 'RPC profile changed',
+
   /* ---- form ---- */
   'ed2k.keyword': 'Keyword',
   'ed2k.keywordPlaceholder': 'What are you looking for?',

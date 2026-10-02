@@ -18,6 +18,7 @@ import type {
 } from '@/rpc/types';
 import { Aria2TaskStatus } from '@/config/rpc-constants';
 import { completedPiecesOf, computeNumPieces, computePieceLength } from './pieces';
+import { buildFileTree } from './filetree';
 import type {
   FileTreeNode,
   FileTypeInfo,
@@ -326,8 +327,12 @@ function normalizeFile(file: Aria2File, status: string): FileTypeInfo {
 
   return {
     index,
-    // aria2's `select-file` is 1-based.
-    aria2Index: index + 1,
+    // aria2's own file index is **already** 1-based and arrives as a decimal
+    // string ("Lengths and indexes are decimal strings" — aria2-next manual,
+    // aria2.getFiles: "Index of the file, starting at 1"). It is exactly what
+    // `select-file` expects, so it must be passed through unchanged; adding one
+    // here would shift every selection by a file.
+    aria2Index: index,
     fileName,
     path: file.path ?? '',
     length,
@@ -429,10 +434,17 @@ export function normalizeTask(
   // AriaNg only ever built the virtual tree for multi-file torrents.
   const wantVirtualFileNode = opts.addVirtualFileNode === true && raw.bittorrent?.mode === 'multi';
 
-  // TODO: populate `fileTree` from domain/filetree.ts once that module lands
-  // (AriaNg's rule: `allDirectories.length > 1` → `multiDir`).
-  const fileTree: FileTreeNode[] = [];
-  const multiDir = wantVirtualFileNode && fileTree.length > 1;
+  let fileTree: FileTreeNode[] = [];
+  let multiDir = false;
+
+  if (wantVirtualFileNode) {
+    const built = buildFileTree(files, {
+      taskDir: raw.dir ?? '',
+      torrentRootName: raw.bittorrent ? getBittorrentName(raw.bittorrent) || undefined : undefined,
+    });
+    fileTree = built.nodes;
+    multiDir = built.multiDir;
+  }
 
   return {
     gid: raw.gid,

@@ -143,6 +143,10 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
 
   useEffect(() => {
     if (!active) return;
+    // `load` is async: it awaits `getOption` / `getGlobalOption` before touching
+    // any state, so this is an external-system read rather than a cascading
+    // render. The rule cannot see the `await`, hence the explicit suppression.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
     // `reloadToken` is the explicit "re-read now" signal from the page.
   }, [active, reloadToken, load]);
@@ -153,59 +157,6 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
       timers.current = {};
     },
     [],
-  );
-
-  /* ---------------------------------------------------------------- */
-  /* saving                                                            */
-  /* ---------------------------------------------------------------- */
-
-  const submit = useCallback(
-    async (key: string, value: string) => {
-      setRowStates((current) => ({ ...current, [key]: 'saving' }));
-      setRowErrors((current) => ({ ...current, [key]: '' }));
-
-      const ok = await changeTaskOption(gid, key, value);
-
-      if (ok) {
-        // Only a confirmed `OK` updates the displayed value (AriaNg's rule).
-        setValues((current) => ({ ...current, [key]: value }));
-        setRowStates((current) => ({ ...current, [key]: 'saved' }));
-        return;
-      }
-
-      setRowStates((current) => ({ ...current, [key]: 'error' }));
-      setRowErrors((current) => ({ ...current, [key]: t('Failed to save the option') }));
-      // Revert to what aria2 still holds.
-      setDrafts((current) => ({ ...current, [key]: values[key] ?? '' }));
-    },
-    [gid, t, values],
-  );
-
-  const schedule = useCallback(
-    (key: string, value: string) => {
-      setDrafts((current) => ({ ...current, [key]: value }));
-
-      const pending = timers.current[key];
-      if (pending !== undefined) clearTimeout(pending);
-
-      timers.current[key] = setTimeout(() => {
-        delete timers.current[key];
-        void submit(key, value);
-      }, OPTION_SAVE_DEBOUNCE_MS);
-    },
-    [submit],
-  );
-
-  const submitNow = useCallback(
-    (key: string, value: string) => {
-      const pending = timers.current[key];
-      if (pending !== undefined) {
-        clearTimeout(pending);
-        delete timers.current[key];
-      }
-      void submit(key, value);
-    },
-    [submit],
   );
 
   /* ---------------------------------------------------------------- */
@@ -234,6 +185,100 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
     return '';
   }, [t]);
 
+  /**
+   * The exact string handed to `aria2.changeOption`.
+   *
+   * A `submitFormat: 'array'` row (`header`) is edited as one textarea but is
+   * semantically a list: trimming the items and dropping blank lines here means
+   * what gets submitted is exactly what `getOption` will hand back, instead of
+   * whatever whitespace the user happened to type.
+   */
+  const normalizeSubmitValue = useCallback((meta: OptionMeta, raw: string): string => {
+    if (meta.submitFormat !== 'array') {
+      return raw.trim();
+    }
+
+    const separator = meta.separator ?? ',';
+    return raw
+      .split(separator)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .join(separator);
+  }, []);
+
+  /* ---------------------------------------------------------------- */
+  /* saving                                                            */
+  /* ---------------------------------------------------------------- */
+
+  const submit = useCallback(
+    async (key: string, value: string) => {
+      setRowStates((current) => ({ ...current, [key]: 'saving' }));
+      setRowErrors((current) => ({ ...current, [key]: '' }));
+
+      const ok = await changeTaskOption(gid, key, value);
+
+      if (ok) {
+        // Only a confirmed `OK` updates the displayed value (AriaNg's rule).
+        setValues((current) => ({ ...current, [key]: value }));
+        setRowStates((current) => ({ ...current, [key]: 'saved' }));
+        return;
+      }
+
+      setRowStates((current) => ({ ...current, [key]: 'error' }));
+      setRowErrors((current) => ({ ...current, [key]: t('Failed to save the option') }));
+      // Revert to what aria2 still holds.
+      setDrafts((current) => ({ ...current, [key]: values[key] ?? '' }));
+    },
+    [gid, t, values],
+  );
+
+  /**
+   * Debounced save. AriaNg submitted through `optionStatus` on every change;
+   * the debounce keeps the 1 s poll from racing a half-typed value, and an
+   * invalid value is **not** submitted at all.
+   */
+  const schedule = useCallback(
+    (meta: OptionMeta, value: string) => {
+      const key = meta.key;
+      setDrafts((current) => ({ ...current, [key]: value }));
+
+      const error = validate(meta, value);
+      setRowErrors((current) => ({ ...current, [key]: error }));
+
+      const pending = timers.current[key];
+      if (pending !== undefined) clearTimeout(timers.current[key]);
+
+      if (error !== '') {
+        delete timers.current[key];
+        return;
+      }
+
+      timers.current[key] = setTimeout(() => {
+        delete timers.current[key];
+        void submit(key, normalizeSubmitValue(meta, value));
+      }, OPTION_SAVE_DEBOUNCE_MS);
+    },
+    [submit, validate, normalizeSubmitValue],
+  );
+
+  const submitNow = useCallback(
+    (meta: OptionMeta, value: string) => {
+      const key = meta.key;
+
+      const error = validate(meta, value);
+      setRowErrors((current) => ({ ...current, [key]: error }));
+      if (error !== '') return;
+
+      const pending = timers.current[key];
+      if (pending !== undefined) {
+        clearTimeout(timers.current[key]);
+        delete timers.current[key];
+      }
+      void submit(key, normalizeSubmitValue(meta, value));
+    },
+    [submit, validate, normalizeSubmitValue],
+  );
+
   /* ---------------------------------------------------------------- */
   /* rendering                                                         */
   /* ---------------------------------------------------------------- */
@@ -252,7 +297,7 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
           checked={value === 'true'}
           disabled={disabled}
           label={optionLabel(t, key)}
-          onChange={(next) => submitNow(key, next ? 'true' : 'false')}
+          onChange={(next) => submitNow(meta, next ? 'true' : 'false')}
         />
       );
     }
@@ -272,7 +317,7 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
           items={items}
           label={optionLabel(t, key)}
           disabled={disabled}
-          onChange={(next) => submitNow(key, next)}
+          onChange={(next) => submitNow(meta, next)}
         />
       );
     }
@@ -286,7 +331,7 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
           disabled={disabled}
           error={rowErrors[key] || undefined}
           helperText={meta.showCount ? `${countItems(meta, value)}` : undefined}
-          onInput={(next) => schedule(key, next)}
+          onInput={(next) => schedule(meta, next)}
         />
       );
     }
@@ -299,15 +344,8 @@ export function OptionsTab({ gid, status, isBittorrent, fileSelectionState, relo
         disabled={disabled}
         error={rowErrors[key] || undefined}
         helperText={meta.suffix === 'Bytes' ? humanizeByteValue(formatBytesInput(value.trim())) : undefined}
-        onInput={(next) => schedule(key, next)}
-        onEnter={(next) => {
-          const error = validate(meta, next);
-          if (error) {
-            setRowErrors((current) => ({ ...current, [key]: error }));
-            return;
-          }
-          submitNow(key, next);
-        }}
+        onInput={(next) => schedule(meta, next)}
+        onEnter={(next) => submitNow(meta, next)}
       />
     );
   };

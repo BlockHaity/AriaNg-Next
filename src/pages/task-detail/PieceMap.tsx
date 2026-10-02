@@ -79,6 +79,16 @@ export function resolveTokenColor(element: Element | null, token: string, fallba
   }
 }
 
+/**
+ * Where mdui publishes the design tokens: `<html>` (the generated colour-scheme
+ * `<style>` and the theme class both target it). Reading the tokens from there
+ * rather than from a widget-local ref means they can be resolved during render —
+ * a ref must not be read then — and it is what every widget on this page does.
+ */
+export function themeTokenRoot(): Element | null {
+  return typeof document === 'undefined' ? null : document.documentElement;
+}
+
 /** CSS paint for a completed piece; shared with {@link PieceBar}. */
 export function completedPieceColor(element: Element | null): string {
   return resolveTokenColor(element, PIECE_COMPLETED_TOKEN, FALLBACK_COMPLETED);

@@ -21,11 +21,18 @@ export interface Aria2Uri {
   status: 'used' | 'waiting';
 }
 
+/**
+ * One entry of `getFiles` / `tellStatus().files`.
+ *
+ * "Values are strings." — and `index` is **already 1-based**
+ * ("Index of the file, starting at 1, in the same order as files appear in the
+ * multi-file torrent"). That index is exactly what `select-file` takes, so it
+ * must be forwarded unchanged.
+ */
 export interface Aria2File {
-  index: number;
+  /** 1-based file index, as a decimal string. */
+  index: string;
   path: string;
-  /** 1-based aria2 file index, kept for `select-file`. */
-  aria2Index: number;
   length: string;
   completedLength: string;
   selected: 'true' | 'false';
@@ -42,8 +49,13 @@ export interface Aria2TorrentError {
   file?: string;
 }
 
-/** aria2-next structured BitTorrent error (`bittorrent.error`). */
-export interface Aria2BittorrentError extends Aria2TorrentError {}
+/**
+ * aria2-next structured BitTorrent error (`bittorrent.error`).
+ *
+ * The shape is currently identical to {@link Aria2TorrentError}; it is a
+ * distinct alias so the two concepts can diverge without touching call sites.
+ */
+export type Aria2BittorrentError = Aria2TorrentError;
 
 /** `bittorrent.info` — the Info dictionary subset aria2 exposes. */
 export interface Aria2BittorrentInfo {

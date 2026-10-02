@@ -67,8 +67,9 @@ function guard<T extends object>(raw: T): { readonly raw: T; readonly snapshot: 
 
 function httpFile(overrides: Partial<Aria2File> = {}): Aria2File {
   return {
-    index: 0,
-    aria2Index: 1,
+    // aria2's file index is a **1-based decimal string** ("Values are strings",
+    // "Index of the file, starting at 1").
+    index: '1',
     path: '/home/user/downloads/movie.mp4',
     length: '1000',
     completedLength: '250',
@@ -172,7 +173,7 @@ function buildMagnetBt(): TaskFixture {
     bitfield: 'a0',
     files: [
       httpFile({
-        index: 0,
+        index: '1',
         path: '/home/user/downloads/Ünïcode Tôrrent/a.mkv',
         length: '262144',
         completedLength: '262144',
@@ -371,7 +372,7 @@ function buildMultiFileBt(): TaskFixture {
     pieceLength: '262144',
     files: [
       httpFile({
-        index: 0,
+        index: '1',
         path: `${base}/a.mkv`,
         length: '262144',
         completedLength: '0',
@@ -379,7 +380,7 @@ function buildMultiFileBt(): TaskFixture {
         uris: undefined,
       }),
       httpFile({
-        index: 1,
+        index: '2',
         path: `${base}/Season 1/b.mkv`,
         length: '262144',
         completedLength: '0',
@@ -387,7 +388,7 @@ function buildMultiFileBt(): TaskFixture {
         uris: undefined,
       }),
       httpFile({
-        index: 2,
+        index: '3',
         path: `${base}/readme.txt`,
         length: '262144',
         completedLength: '0',
@@ -440,7 +441,7 @@ describe('normalizeTask — plain HTTP download (active)', () => {
 
     expect(task.files).toHaveLength(1);
     expect(task.files[0]).toEqual({
-      index: 0,
+      index: 1,
       aria2Index: 1,
       fileName: 'movie.mp4',
       path: '/home/user/downloads/movie.mp4',
@@ -459,13 +460,34 @@ describe('normalizeTask — plain HTTP download (active)', () => {
     expect(task.trackers).toEqual([]);
   });
 
-  it('leaves fileTree/multiDir empty even when addVirtualFileNode is requested', () => {
-    // TODO: filetree.ts owns the tree; until then the request is a no-op.
+  it('builds the file tree and flips multiDir for a multi-file torrent', () => {
     const { raw } = guard(buildMultiFileBt());
     const task = normalizeTask(raw, { addVirtualFileNode: true });
 
-    expect(task.fileTree).toEqual([]);
-    expect(task.multiDir).toBe(false);
+    // `buildFileTree` owns the shape; here we only pin that the request is
+    // honoured and that multiDir is derived from the directory count.
+    expect(task.fileTree.length).toBeGreaterThan(0);
+    expect(task.multiDir).toBe(true);
+    expect(task.fileTree.some((node) => node.isDir)).toBe(true);
+  });
+
+  it('leaves the tree empty unless it is explicitly requested', () => {
+    const { raw } = guard(buildMultiFileBt());
+
+    // AriaNg only built the virtual tree when the caller asked for it, because
+    // it is only ever rendered by the detail page's Files tab.
+    expect(normalizeTask(raw).fileTree).toEqual([]);
+    expect(normalizeTask(raw).multiDir).toBe(false);
+  });
+
+  it('does not build a tree for a single-mode torrent or a non-torrent', () => {
+    const http = guard(buildHttpActive());
+    expect(normalizeTask(http.raw, { addVirtualFileNode: true }).fileTree).toEqual([]);
+
+    const single = guard(
+      withOverrides(buildMultiFileBt(), { bittorrent: { mode: 'single' } }),
+    );
+    expect(normalizeTask(single.raw, { addVirtualFileNode: true }).fileTree).toEqual([]);
   });
 
   it('reports verifiedPercent / verifyIntegrityPending only when present', () => {

@@ -10,7 +10,7 @@
  */
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 import type { Aria2File, Aria2TaskStatusResult } from '@/rpc/types';
 import { normalizeTask } from '@/domain/normalize';
@@ -21,6 +21,8 @@ import { useSettingsStore } from '@/store/settings';
 import { useSelectionStore } from '@/store/selection';
 import { useTasksStore } from '@/store/tasks';
 import { i18n } from '@/i18n';
+import * as commands from '@/store/commands';
+import * as dialogs from '@/ui/mdui/dialogs';
 import { TaskTable } from '../task-list/TaskTable';
 import { TaskRowHeader, nextOrderForHeader } from '../task-list/TaskRowHeader';
 import { TaskListToolbar, DISPLAY_ORDER_ENTRIES } from '../task-list/TaskListToolbar';
@@ -468,6 +470,16 @@ describe('TaskListToolbar', () => {
     expect(trigger.textContent).toContain('Display Order');
   });
 
+  it('persists the order when a dropdown entry is chosen', () => {
+    useSettingsStore.setState({ settings: createDefaultSettings() });
+    seedList([makeTask('a', 'a.iso')]);
+    render(<TaskListToolbar kind="downloading" />);
+
+    fireEvent.click(screen.getByText('By File Size'));
+
+    expect(useSettingsStore.getState().settings.displayOrder).toBe('size:asc');
+  });
+
   it('shows the three select-all toggles and disables them on an empty list', () => {
     seedList([]);
     render(<TaskListToolbar kind="downloading" />);
@@ -612,10 +624,17 @@ describe('TaskContextMenu visibility', () => {
   });
 
   it('shows Copy ED2K Link for a selected ed2k task', () => {
+    // `tellStatus().ed2k` has no `ed2kLink`; the menu item is gated on the
+    // name/length/hash triple being complete, and the MD4 hash must be 32 hex
+    // characters or the link would be unresolvable.
     seedList([
       {
         ...makeTask('a', 'a.iso'),
-        ed2k: { hash: 'HASH', name: 'a.iso', ed2kLink: 'ed2k://|file|a.iso|' } as NormalizedTask['ed2k'],
+        ed2k: {
+          hash: '31D6CFE0D16AE931B73C59D7E0C089C0',
+          name: 'a.iso',
+          length: 1024,
+        } as NormalizedTask['ed2k'],
       },
     ]);
     useSelectionStore.setState({ selected: { a: true } });
@@ -627,6 +646,33 @@ describe('TaskContextMenu visibility', () => {
   it('builds a magnet link the way AriaNg did', () => {
     const task = { ...makeTask('a', 'a.iso'), infoHash: 'DEADBEEF' };
     expect(magnetLinkFor(task)).toBe('magnet:?xt=urn:btih:DEADBEEF');
+  });
+
+  it('sets the display order when a submenu entry is chosen', () => {
+    seedList([makeTask('a', 'a.iso')]);
+    render(<TaskContextMenu kind="downloading" />);
+
+    // `mdui-menu-item` overrides `.click()` through mdui's FocusableMixin and
+    // returns early unless the item is `focusable` (true only inside a selectable
+    // menu), so a real dispatched event is what a mouse produces anyway.
+    fireEvent.click(screen.getByText('By File Name'));
+
+    expect(useSettingsStore.getState().settings.displayOrder).toBe('name:asc');
+  });
+
+  it('puts a check mark on the active order entry only', () => {
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, displayOrder: 'percent:desc' } });
+    seedList([makeTask('a', 'a.iso')]);
+    const { container } = render(<TaskContextMenu kind="downloading" />);
+
+    const submenu = container.querySelector('mdui-menu[slot="submenu"]') as HTMLElement;
+    const entries = Array.from(submenu.querySelectorAll('mdui-menu-item'));
+    const checked = entries.filter((entry) => entry.querySelector('mdui-icon-check'));
+
+    expect(entries).toHaveLength(7);
+    expect(checked).toHaveLength(1);
+    expect(checked[0]?.textContent).toContain('By Progress');
+    expect((checked[0] as HTMLElement).getAttribute('aria-selected')).toBe('true');
   });
 
   it('exposes the seven order types in the Display Order submenu', () => {
@@ -650,5 +696,274 @@ describe('TaskRowHeader in isolation', () => {
     fireEvent.click(screen.getByRole('button', { name: /File Name/ }));
     expect(onChangeOrder).toHaveBeenCalledWith('name:asc');
     expect(container.querySelectorAll('[role="columnheader"]')).toHaveLength(6);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* after-action navigation                                             */
+/* ------------------------------------------------------------------ */
+
+// Every mutation is stubbed: what these tests pin is *where the page goes*, not
+// whether aria2 was called correctly (that is `@/store/commands`' contract).
+vi.mock('@/store/commands', async () => {
+  const actual = await import('@/store/commands');
+  const batch = (successCount: number, failedCount = 0) => ({
+    successCount,
+    failedCount,
+    hasSuccess: successCount > 0,
+    hasError: failedCount > 0,
+  });
+  return {
+    ...actual,
+    changeTasksState: vi.fn(async () => batch(1)),
+    removeTasks: vi.fn(async () => batch(1)),
+    clearStoppedTasks: vi.fn(async () => {}),
+    retryTasks: vi.fn(async () => batch(2, 1)),
+    retryTask: vi.fn(async () => ({ ok: true })),
+  };
+});
+
+// mdui's programmatic dialogs build real `<mdui-dialog>` elements and animate
+// them, and jsdom has no `Element.animate`; the open animation therefore rejects.
+// The dialog *wording* is not this suite's subject, so both are stubbed and the
+// accept/cancel branch is chosen explicitly per test.
+vi.mock('@/ui/mdui/dialogs', () => ({
+  confirmDialog: vi.fn(async () => true),
+  alertDialog: vi.fn(async () => undefined),
+  promptDialog: vi.fn(async () => null),
+  snackbarMessage: vi.fn(),
+  registerDialogTypes: vi.fn(),
+}));
+
+const mocked = <T extends object>(fn: unknown): T => fn as T;
+
+describe('after-action navigation', () => {
+  /** Runs the async action behind a toolbar button / menu item and settles. */
+  async function press(element: Element): Promise<void> {
+    await act(async () => {
+      element.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+      await Promise.resolve();
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocked<{ mockReturnValue: (v: boolean) => void }>(dialogs.confirmDialog).mockReturnValue(true);
+    useSettingsStore.setState({ settings: createDefaultSettings() });
+    // Removal must not open a dialog in these tests; the confirm path is AriaNg's
+    // and is gated on this setting.
+    useSettingsStore.setState({ settings: { ...createDefaultSettings(), confirmTaskRemoval: false } });
+  });
+
+  it('delete goes to /stopped from /downloading', async () => {
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="downloading" />);
+    await press(screen.getByText('Delete').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.removeTasks).mock.calls).toHaveLength(1);
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('delete goes to /stopped from /waiting', async () => {
+    window.location.hash = '#!/waiting';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="waiting" />);
+    await press(screen.getByText('Delete').closest('mdui-button') as HTMLElement);
+
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('delete is already on /stopped', async () => {
+    window.location.hash = '#!/stopped';
+    seedList([makeTask('a', 'a.iso', { status: 'complete' })]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="stopped" />);
+    await press(screen.getByText('Delete').closest('mdui-button') as HTMLElement);
+
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('start from /waiting goes to /downloading', async () => {
+    window.location.hash = '#!/waiting';
+    seedList([makeTask('a', 'a.iso', { status: 'paused' })]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskContextMenu kind="waiting" />);
+    await press(screen.getByText('Start').closest('mdui-menu-item') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.changeTasksState).mock.calls).toHaveLength(1);
+    expect(window.location.hash).toBe('#!/downloading');
+  });
+
+  it('start from /stopped stays put', async () => {
+    window.location.hash = '#!/stopped';
+    seedList([makeTask('a', 'a.iso', { status: 'paused' })]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskContextMenu kind="stopped" />);
+    await press(screen.getByText('Start').closest('mdui-menu-item') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.changeTasksState).mock.calls).toHaveLength(1);
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('pause from /downloading goes to /waiting', async () => {
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskContextMenu kind="downloading" />);
+    await press(screen.getByText('Pause').closest('mdui-menu-item') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.changeTasksState).mock.calls).toHaveLength(1);
+    expect(window.location.hash).toBe('#!/waiting');
+  });
+
+  it('pause from /stopped stays put', async () => {
+    window.location.hash = '#!/stopped';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskContextMenu kind="stopped" />);
+    await press(screen.getByText('Pause').closest('mdui-menu-item') as HTMLElement);
+
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('clear stopped goes to /stopped once confirmed', async () => {
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso', { status: 'complete' })]);
+    render(<TaskListToolbar kind="downloading" />);
+
+    await press(screen.getByText('Clear Stopped Tasks').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.clearStoppedTasks).mock.calls).toHaveLength(1);
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('clear stopped does nothing when the confirmation is cancelled', async () => {
+    mocked<{ mockReturnValue: (v: boolean) => void }>(dialogs.confirmDialog).mockReturnValue(false);
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso', { status: 'complete' })]);
+    render(<TaskListToolbar kind="downloading" />);
+
+    await press(screen.getByText('Clear Stopped Tasks').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.clearStoppedTasks).mock.calls).toHaveLength(0);
+    expect(window.location.hash).toBe('#!/downloading');
+  });
+
+  /* ---- delete is gated on confirmTaskRemoval, AriaNg-exact ---- */
+
+  it('delete asks for confirmation when confirmTaskRemoval is on', async () => {
+    useSettingsStore.setState({ settings: { ...createDefaultSettings(), confirmTaskRemoval: true } });
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="downloading" />);
+    await press(screen.getByText('Delete').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(dialogs.confirmDialog).mock.calls).toHaveLength(1);
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.removeTasks).mock.calls).toHaveLength(1);
+  });
+
+  it('delete asks nothing when confirmTaskRemoval is off', async () => {
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="downloading" />);
+    await press(screen.getByText('Delete').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(dialogs.confirmDialog).mock.calls).toHaveLength(0);
+  });
+
+  it('delete does nothing when the confirmation is cancelled', async () => {
+    mocked<{ mockReturnValue: (v: boolean) => void }>(dialogs.confirmDialog).mockReturnValue(false);
+    useSettingsStore.setState({ settings: { ...createDefaultSettings(), confirmTaskRemoval: true } });
+    window.location.hash = '#!/downloading';
+    seedList([makeTask('a', 'a.iso')]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="downloading" />);
+    await press(screen.getByText('Delete').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[] } }>(commands.removeTasks).mock.calls).toHaveLength(0);
+    expect(window.location.hash).toBe('#!/downloading');
+  });
+
+  /* ---- retry: result dialog + afterRetryingTask ---- */
+
+  it('reports the retry counts and goes to /downloading by default', async () => {
+    window.location.hash = '#!/stopped';
+    seedList([
+      { ...makeTask('a', 'a.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' },
+      { ...makeTask('b', 'b.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' },
+    ]);
+    useSelectionStore.setState({ selected: { a: true, b: true } });
+
+    render(<TaskListToolbar kind="stopped" />);
+    await press(screen.getByText('Retry Selected Tasks').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[][] } }>(commands.retryTasks).mock.calls[0]?.[0]).toEqual(['a', 'b']);
+    expect(mocked<{ mock: { calls: unknown[][] } }>(dialogs.alertDialog).mock.calls).toHaveLength(1);
+    expect(window.location.hash).toBe('#!/downloading');
+  });
+
+  it('stays on the current page when afterRetryingTask is current-page', async () => {
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), afterRetryingTask: 'current-page' },
+    });
+    window.location.hash = '#!/stopped';
+    seedList([
+      { ...makeTask('a', 'a.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' },
+      { ...makeTask('b', 'b.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' },
+    ]);
+    useSelectionStore.setState({ selected: { a: true, b: true } });
+
+    render(<TaskListToolbar kind="stopped" />);
+    await press(screen.getByText('Retry Selected Tasks').closest('mdui-button') as HTMLElement);
+
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('opens the task detail when afterRetryingTask is task-detail', async () => {
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), afterRetryingTask: 'task-detail' },
+    });
+    window.location.hash = '#!/stopped';
+    seedList([
+      { ...makeTask('a', 'a.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' },
+      { ...makeTask('b', 'b.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' },
+    ]);
+    useSelectionStore.setState({ selected: { a: true, b: true } });
+
+    render(<TaskListToolbar kind="stopped" />);
+    await press(screen.getByText('Retry Selected Tasks').closest('mdui-button') as HTMLElement);
+
+    // A *bulk* retry has no single destination, so it degrades to staying put.
+    expect(window.location.hash).toBe('#!/stopped');
+  });
+
+  it('retries a single selection through the single-task path, with no result dialog', async () => {
+    window.location.hash = '#!/stopped';
+    seedList([{ ...makeTask('a', 'a.iso', { status: 'error', errorCode: '3' }), errorDescription: 'boom' }]);
+    useSelectionStore.setState({ selected: { a: true } });
+
+    render(<TaskListToolbar kind="stopped" />);
+    await press(screen.getByText('Retry Selected Tasks').closest('mdui-button') as HTMLElement);
+
+    expect(mocked<{ mock: { calls: unknown[][] } }>(commands.retryTask).mock.calls[0]).toEqual(['a']);
+    expect(mocked<{ mock: { calls: unknown[][] } }>(commands.retryTasks).mock.calls).toHaveLength(0);
+    expect(mocked<{ mock: { calls: unknown[] } }>(dialogs.alertDialog).mock.calls).toHaveLength(0);
+    // `afterRetryingTask` defaults to `task-list-downloading`.
+    expect(window.location.hash).toBe('#!/downloading');
   });
 });

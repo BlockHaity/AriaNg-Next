@@ -79,9 +79,13 @@ export function ChooseFilesToolbar({
         </MduiButton>
 
         <MduiDropdown
-          aria-label={toggleLabel}
           trigger={
-            <MduiButton variant="filled" icon="expand-more" aria-label={t('Select Invert')} />
+            // The caret half only shows an icon, so the accessible name is
+            // supplied as visually hidden text (AriaNg's `dropdown-toggle` only
+            // had an `aria-haspopup`).
+            <MduiButton variant="filled" icon="expand-more" aria-haspopup="menu" aria-expanded="false">
+              <span className="ariang-visually-hidden">{t('Select Invert')}</span>
+            </MduiButton>
           }
           items={[
             <MduiMenu key="menu">

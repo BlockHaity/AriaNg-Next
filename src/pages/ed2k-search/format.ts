@@ -87,19 +87,25 @@ export interface NormalizedEd2kResult {
 /* ------------------------------------------------------------------ */
 
 /**
- * The manual names the result fields `hash`, `name` and `length`
- * ("Each entry in ``results`` contains … ``hash``, ``name``, ``length``,
- * ``sourceCount`` …"), while `Aria2Ed2kSearchResult` models the same data as
- * `fileHash`, `filename` and `fileLength`.
+ * Field aliases.
  *
- * Both spellings are accepted so the UI keeps working whichever one the daemon
- * actually emits; the canonical (local) name wins when both are present.
+ * `Aria2Ed2kSearchResult` models the manual's own spelling — "Each entry in
+ * ``results`` contains … ``hash``, ``name``, ``length``, ``sourceCount``,
+ * ``completeSourceCount``, ``fileType``, ``extension``, ``mediaArtist``,
+ * ``mediaAlbum``, ``mediaTitle``, ``mediaLength``, ``mediaBitrate``,
+ * ``mediaCodec``, ``sourceNetwork``, and ``ed2kLink``" — so that is what is
+ * read first.
+ *
+ * The `fileX` spellings are kept as aliases because an earlier revision of the
+ * type (and Rayburst-style clients) used them, and a search page that silently
+ * renders "Unknown file name" because of a field rename is worse than one
+ * defensive lookup.
  */
 const FIELD_ALIASES = {
   ed2kLink: ['ed2kLink'],
-  filename: ['filename', 'name'],
-  fileLength: ['fileLength', 'length'],
-  fileHash: ['fileHash', 'hash'],
+  filename: ['name', 'filename'],
+  fileLength: ['length', 'fileLength'],
+  fileHash: ['hash', 'fileHash'],
   mediaCodec: ['mediaCodec'],
   sourceNetwork: ['sourceNetwork'],
   sourceCount: ['sourceCount'],

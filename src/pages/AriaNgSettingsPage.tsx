@@ -140,23 +140,28 @@ export function AriaNgSettingsPage() {
 
   /* ---- swipe ----------------------------------------------------------- */
 
-  // AriaNg: swiping left moves to the next RPC tab, right to the previous one —
-  // and a right-swipe on the first RPC tab lands back on Global.
+  /**
+   * Swipe = tab navigation, verbatim from AriaNg's `$rootScope.swipeActions`:
+   *
+   * - `extendLeftSwipe` treats the Global tab as index `-1`, so swiping left
+   *   there lands on the first RPC tab, and it stops on the last one;
+   * - `extendRightSwipe` walks back and, from the first RPC tab, returns to
+   *   Global; from Global it declines.
+   *
+   * Returning `false` is what tells the shell's global handler that this page
+   * did not consume the gesture.
+   */
   useEffect(() => {
     const unregisterLeft = registerSwipeAction('left', () => {
       const index = rpcTabIndex(activeTab);
-      if (index < 0 || index >= profiles.length - 1) return false;
+      if (index >= profiles.length - 1) return false;
       setActiveTab(rpcTabValue(index + 1));
       return true;
     });
     const unregisterRight = registerSwipeAction('right', () => {
       const index = rpcTabIndex(activeTab);
       if (index < 0) return false;
-      if (index === 0) {
-        setActiveTab(GLOBAL_TAB);
-        return true;
-      }
-      setActiveTab(rpcTabValue(index - 1));
+      setActiveTab(index === 0 ? GLOBAL_TAB : rpcTabValue(index - 1));
       return true;
     });
 

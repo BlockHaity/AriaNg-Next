@@ -20,10 +20,19 @@ import type { CSSProperties } from 'react';
 
 import { getCombinedPieces } from '@/domain/pieces';
 import type { PieceRun } from '@/domain/pieces';
-import { completedPieceColor, missingPieceColor, resolveTokenColor, useThemeVersion } from './PieceMap';
+import {
+  completedPieceColor,
+  missingPieceColor,
+  resolveTokenColor,
+  themeTokenRoot,
+} from './PieceMap';
+import { THEME_CHANGE_EVENT } from '@/ui/mdui';
 
 /** AriaNg's hard-coded bar colour, kept as the fallback for unresolvable tokens. */
 export const LEGACY_PIECE_BAR_COLOR = '#208fe5';
+
+/** Track colour of the *missing* part when the caller overrides the bar colour. */
+const MISSING_BACKGROUND = 'rgb(var(--mdui-color-surface-container-highest))';
 
 export interface PieceBarProps {
   /** Run-length encoded piece map, as carried by `TaskPeer.pieces`. */
@@ -91,7 +100,17 @@ export function PieceBar({
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
-  const themeVersion = useThemeVersion();
+  // Re-resolved on every `themechange`, which is what makes the bar follow dark
+  // mode and the dynamic scheme. A fresh string identity re-runs the paint.
+  const [tokenColor, setTokenColor] = useState<string>(() => completedPieceColor(themeTokenRoot()));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const refresh = (): void => setTokenColor(completedPieceColor(themeTokenRoot()));
+    window.addEventListener(THEME_CHANGE_EVENT, refresh);
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, refresh);
+  }, []);
 
   useLayoutEffect(() => {
     const node = hostRef.current;
@@ -129,8 +148,7 @@ export function PieceBar({
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    const host = hostRef.current;
-    if (!canvas || !host) return;
+    if (!canvas) return;
 
     const context = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
     if (!context) return;
@@ -143,13 +161,11 @@ export function PieceBar({
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.clearRect(0, 0, cssWidth, height);
 
-    context.fillStyle = color ?? (completedPieceColor(host) || LEGACY_PIECE_BAR_COLOR);
+    context.fillStyle = color ?? tokenColor ?? LEGACY_PIECE_BAR_COLOR;
     context.fillRect(0, 0, cssWidth, height);
 
     // The missing pieces are the *unfilled* remainder, so repaint them on top.
-    context.fillStyle = color
-      ? 'rgb(var(--mdui-color-surface-container-highest))'
-      : missingPieceColor(host);
+    context.fillStyle = color ? MISSING_BACKGROUND : missingPieceColor(themeTokenRoot());
 
     let positionX = 0;
     for (const run of merged) {
@@ -159,7 +175,7 @@ export function PieceBar({
       }
       positionX += pieceWidth;
     }
-  }, [merged, total, width, height, color, themeVersion]);
+  }, [merged, total, width, height, color, tokenColor]);
 
   useEffect(() => {
     draw();

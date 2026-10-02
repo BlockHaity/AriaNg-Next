@@ -9,11 +9,16 @@
  *    `useSettingsStore.update`, which re-renders the rows in place. AriaNg let
  *    Angular's two-way binding write the option object and then had to reload
  *    for anything the bootstrap had captured once.
- * 2. **The scheduler re-reads every interval.** `store/scheduler.ts` exposes
- *    `updateInterval(id, ms)`, so the four refresh intervals hot-apply; the RPC
- *    store hot-swaps the profile through `applyProfile`. Only the translation
- *    bundle (loaded once at bootstrap), Import Settings and Reset Settings still
- *    need a reload — see {@link RELOAD_REQUIRED_KEYS}.
+ * 2. **The shell hot-applies the rest.** `app/BootstrapGate.tsx` subscribes to
+ *    this store and calls `scheduler.updateInterval(...)` for the three polling
+ *    jobs; the RPC store swaps the transport through `applyProfile(...)` when a
+ *    profile is activated. Only the translation bundle (loaded once at
+ *    bootstrap), Import Settings and Reset Settings still need a reload — see
+ *    {@link RELOAD_REQUIRED_KEYS}.
+ *
+ * Writes are **not** debounced here: the settings store already coalesces them
+ * (300 ms, `PERSIST_DEBOUNCE_MS` in `store/settings.ts`). Adding a second
+ * timer would only widen the window in which a crash loses the edit.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -205,15 +210,19 @@ export function GlobalSettingsTab(props: GlobalSettingsTabProps) {
           break;
       }
 
+      // Every remaining row is a real `AriaNgSettings` key; the pseudo-keys are
+      // all handled above. One cast, one place: the metadata table cannot carry
+      // a per-key value type, and the row kind already decided it here.
+      const key = field.key as keyof AriaNgSettings;
       if (field.kind === 'switch') {
-        update({ [field.key]: raw === 'true' } as Partial<AriaNgSettings>);
+        update({ [key]: raw === 'true' } as Partial<AriaNgSettings>);
         return;
       }
       if (field.kind === 'interval') {
-        update({ [field.key]: Number(raw) } as Partial<AriaNgSettings>);
+        update({ [key]: Number(raw) } as Partial<AriaNgSettings>);
         return;
       }
-      update({ [field.key]: raw } as Partial<AriaNgSettings>);
+      update({ [key]: raw } as Partial<AriaNgSettings>);
     },
     [changeLanguage, changeTheme, setSessionDebugMode, update],
   );

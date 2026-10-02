@@ -23,14 +23,15 @@
  *    DOM node) alive. `dispose()` runs on unmount and before every re-init.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties } from 'react';
 
 import { getStats, subscribe } from '@/store/monitor';
 import type { SpeedSample } from '@/domain/types';
 import { readableVolume } from '@/i18n/format';
 import { useTranslate } from '@/i18n/react';
-import { resolveTokenColor } from './PieceMap';
+import { THEME_CHANGE_EVENT } from '@/ui/mdui';
+import { resolveTokenColor, themeTokenRoot } from './PieceMap';
 
 /* ------------------------------------------------------------------ */
 /* lazy echarts                                                       */
@@ -113,7 +114,7 @@ export interface TaskSpeedChartProps {
   style?: CSSProperties;
 }
 
-/** Token-derived palette, resolved from the host element. */
+/** Token-derived palette, resolved from the element mdui scopes its tokens on. */
 interface ChartPalette {
   download: string;
   upload: string;
@@ -130,6 +131,13 @@ const FALLBACK_PALETTE: ChartPalette = {
   splitLine: 'rgb(var(--mdui-color-outline-variant))',
 };
 
+/**
+ * Reads the MD3 roles this chart paints with.
+ *
+ * The tokens are read from {@link themeTokenRoot} (`<html>`) rather than from a
+ * chart-local ref: a ref must not be dereferenced during render, and the
+ * palette has to be available on the very first paint.
+ */
 function readPalette(element: Element | null): ChartPalette {
   if (!element) return FALLBACK_PALETTE;
 
@@ -160,24 +168,44 @@ export function TaskSpeedChart({ gid, height = 200, className, style }: TaskSpee
   const t = useTranslate();
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsInstance | null>(null);
-  const [samples, setSamples] = useState<SpeedSample[]>(() => getStats(gid));
   const [ready, setReady] = useState(false);
-  // Bumped by the theme listener; the option object is then rebuilt and re-set.
-  const [themeVersion, setThemeVersion] = useState(0);
+  // Re-resolved whenever mdui announces a new theme; the fresh object identity is
+  // what invalidates the memoised option below.
+  const [palette, setPalette] = useState<ChartPalette>(() => readPalette(themeTokenRoot()));
 
-  /* ---- history subscription ---- */
-  useEffect(() => {
-    setSamples(getStats(gid));
-    return subscribe(gid, () => setSamples(getStats(gid)));
+  /* ---- history (an external store, so `useSyncExternalStore` is the right shape) ---- */
+  /*
+   * `getStats` allocates a new array on every call, so the snapshot has to be
+   * cached and only replaced when the ring actually moved — otherwise
+   * `useSyncExternalStore` would loop forever comparing with `Object.is`.
+   */
+  const snapshotRef = useRef<{ gid: string; samples: SpeedSample[] }>({ gid, samples: getStats(gid) });
+
+  const subscribeToStats = useCallback(
+    (onStoreChange: () => void) =>
+      subscribe(gid, () => {
+        snapshotRef.current = { gid, samples: getStats(gid) };
+        onStoreChange();
+      }),
+    [gid],
+  );
+
+  const getSnapshot = useCallback(() => {
+    if (snapshotRef.current.gid !== gid) {
+      snapshotRef.current = { gid, samples: getStats(gid) };
+    }
+    return snapshotRef.current.samples;
   }, [gid]);
+
+  const samples = useSyncExternalStore(subscribeToStats, getSnapshot, getSnapshot);
 
   /* ---- theme ---- */
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const onThemeChange = (): void => setThemeVersion((current) => current + 1);
-    window.addEventListener('themechange', onThemeChange);
-    return () => window.removeEventListener('themechange', onThemeChange);
+    const onThemeChange = (): void => setPalette(readPalette(themeTokenRoot()));
+    window.addEventListener(THEME_CHANGE_EVENT, onThemeChange);
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, onThemeChange);
   }, []);
 
   /* ---- lazy load + init + dispose ---- */
@@ -209,8 +237,6 @@ export function TaskSpeedChart({ gid, height = 200, className, style }: TaskSpee
 
   /* ---- option ---- */
   const option = useMemo(() => {
-    const palette = readPalette(hostRef.current);
-
     const axisLabel = { color: palette.axis };
     const tooltipLabel = { color: palette.label };
 
@@ -288,9 +314,9 @@ export function TaskSpeedChart({ gid, height = 200, className, style }: TaskSpee
       // Referenced so an empty chart still carries the readable label colours.
       textStyle: tooltipLabel,
     };
-    // `themeVersion` is a deliberate dependency: it forces the whole option to be
-    // rebuilt from freshly resolved tokens.
-  }, [samples, themeVersion, t]);
+    // `palette` is a deliberate dependency: a new object identity means the
+    // tokens were re-resolved, so the whole option has to be rebuilt.
+  }, [samples, palette, t]);
 
   const apply = useCallback(() => {
     chartRef.current?.setOption(option, true);

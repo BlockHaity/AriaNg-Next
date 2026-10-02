@@ -21,7 +21,7 @@
  * through the shared action layer).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { TaskListKind } from '@/config/rpc-constants';
 import { useTasksStore } from '@/store/tasks';
@@ -95,15 +95,14 @@ export function TaskListPage({ kind: kindProp }: TaskListPageProps) {
   /**
    * The spinner must not appear on every tick.
    *
-   * `refresh({ silent: true })` never sets `loading`, so the 1 s poll leaves it
-   * alone; this latch additionally covers the poll racing the first render, which
-   * would otherwise flash the spinner once per page entry.
+   * Derived, never latched: a spinner is only correct while there is nothing to
+   * show *and* a fetch is in flight. A silent poll (what the scheduler issues)
+   * never sets `loading`, so after the first load this is `false` for good — and a
+   * ref or effect latch would either read state during render or cause a
+   * cascading render to maintain itself.
    */
-  const firstLoadDone = useRef(false);
-  if (!loading && !firstLoadDone.current) {
-    firstLoadDone.current = true;
-  }
-  const showSpinner = loading && !firstLoadDone.current;
+  const hasContent = useTasksStore((state) => state.list.length > 0 || state.error !== undefined);
+  const showSpinner = loading && !hasContent;
 
   /* ---- global shortcuts --------------------------------------------- */
 

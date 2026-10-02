@@ -120,7 +120,7 @@ function compareTuples(a: readonly SortKey[], b: readonly SortKey[], descending:
       return leftMissing ? 1 : -1;
     }
 
-    let result =
+    const result =
       typeof left === 'string' || typeof right === 'string'
         ? naturalCompare(String(left), String(right))
         : (left as number) - (right as number);

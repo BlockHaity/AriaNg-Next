@@ -48,7 +48,7 @@ import { recordTaskStat, resetStats } from '@/store/monitor';
 import { scheduler } from '@/store/scheduler';
 import { useSelectionStore } from '@/store/selection';
 import { useSettingsStore } from '@/store/settings';
-import { getDetailPeers, useTasksStore } from '@/store/tasks';
+import { useTasksStore } from '@/store/tasks';
 import { useUiStore } from '@/store/ui';
 import { confirmDialog, MduiIcon, snackbarMessage } from '@/ui/mdui';
 import { bitfieldFromRuns } from './task-detail/PieceMap';
@@ -99,10 +99,19 @@ export default function TaskDetailPage() {
   /* refs the poll closure reads                                        */
   /* ---------------------------------------------------------------- */
 
-  const taskRef = useRef<NormalizedTask | undefined>(task);
-  taskRef.current = task;
+  /*
+   * The scheduler callback and the swipe handlers outlive a single render, so
+   * they cannot close over `task` / `gid` directly. The mirrors are written in
+   * an effect (never during render) and are always fresh by the time the first
+   * tick fires — the poll interval is at least a second.
+   */
+  const taskRef = useRef<NormalizedTask | undefined>(undefined);
   const gidRef = useRef(gid);
-  gidRef.current = gid;
+
+  useEffect(() => {
+    taskRef.current = task;
+    gidRef.current = gid;
+  }, [task, gid]);
 
   const isBittorrent = task?.bittorrent !== undefined;
   const status = task?.status ?? '';
@@ -137,6 +146,13 @@ export default function TaskDetailPage() {
     },
     [searchParams, setSearchParams],
   );
+
+  const peersWantedNow = peersWanted(status, isBittorrent) && activeTab === 'peers';
+
+  const withPeersRef = useRef(peersWantedNow);
+  useEffect(() => {
+    withPeersRef.current = peersWantedNow;
+  }, [peersWantedNow]);
 
   /* ---------------------------------------------------------------- */
   /* selection registration (the global toolbar acts on this task)      */
@@ -183,11 +199,6 @@ export default function TaskDetailPage() {
   /* polling                                                           */
   /* ---------------------------------------------------------------- */
 
-  const peersWantedNow = peersWanted(status, isBittorrent) && activeTab === 'peers';
-
-  const withPeersRef = useRef(peersWantedNow);
-  withPeersRef.current = peersWantedNow;
-
   // First load.
   useEffect(() => {
     if (!gid) return;
@@ -220,7 +231,6 @@ export default function TaskDetailPage() {
     if (!gid || !peersWantedNow) return;
 
     let cancelled = false;
-    setPeers(getDetailPeers(gid) ?? []);
 
     void loadPeers(gid, { includeLocalPeer: true }).then((loaded) => {
       if (!cancelled) setPeers(loaded);
@@ -256,7 +266,7 @@ export default function TaskDetailPage() {
   }, [task, peers]);
 
   /* ---------------------------------------------------------------- */
-  /* global key actions                                                */
+  /* keyboard shortcuts (the shell's toolbar acts on this one task)      */
   /* ---------------------------------------------------------------- */
 
   useEffect(() => {

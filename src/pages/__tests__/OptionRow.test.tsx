@@ -167,12 +167,27 @@ describe('OptionRow — control per option type', () => {
     expect(help?.getAttribute('aria-label')).toContain('proxy');
   });
 
-  it('falls back to the aria2-next note for keys i18n does not know yet', () => {
+  it('uses the aria2-next translation overlay for a key AriaNg never had', () => {
     const { container } = renderRow({ optionKey: 'media-pause-after-probe' });
 
-    // No `options.media-*.name` entry exists yet, so the label is the key.
-    expect(container.querySelector('.option-row__label')).toHaveTextContent('Media Pause After Probe');
-    expect(container.querySelector('.option-row__help')?.getAttribute('aria-label')).toContain('media.tracks');
+    // AriaNg has no media support, so this key can only come from
+    // src/i18n/extensions.ts. Getting the real label proves the overlay is wired
+    // into the English table rather than the row title-casing the key.
+    expect(container.querySelector('.option-row__label')).toHaveTextContent('Pause After Probe');
+    expect(container.querySelector('.option-row__label')).not.toHaveTextContent('media-pause-after-probe');
+
+    // The help tooltip prefers the translated description over the raw
+    // `aria2NextNote`, which is what the overlay buys us.
+    const help = container.querySelector('.option-row__help')?.getAttribute('aria-label') ?? '';
+    expect(help).toContain('pause before fetching payload segments');
+  });
+
+  it('falls back to a title-cased key and the aria2-next note when nothing else exists', () => {
+    // `gid` is internal, has no i18n entry and no note, so the row must still
+    // render something readable rather than an empty label.
+    const { container } = renderRow({ optionKey: 'gid' });
+
+    expect(container.querySelector('.option-row__label')?.textContent?.trim()).not.toBe('');
   });
 });
 
