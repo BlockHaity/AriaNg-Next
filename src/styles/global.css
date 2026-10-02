@@ -1,0 +1,77 @@
+/**
+ * Global stylesheet.
+ *
+ * Rules here are limited to: MD3 token consumption, layout scaffolding and
+ * custom widgets that mdui does not provide (task table, piece map, charts).
+ * Never hard-code a colour — always go through an `--mdui-color-*` token.
+ */
+
+:root {
+  color-scheme: light;
+}
+
+html.mdui-dark,
+:root[data-mdui-theme='dark'] {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: rgb(var(--mdui-color-surface));
+  color: rgb(var(--mdui-color-on-surface));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+  line-height: var(--mdui-typescale-body-medium-line-height);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Respect the user's reduced-motion preference for every custom animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilities                                                           */
+/* ------------------------------------------------------------------ */
+
+.ariang-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ariang-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ariang-scroll-area {
+  overflow: auto;
+  scrollbar-width: thin;
+}

@@ -1,0 +1,9 @@
+module.exports = {
+  extends: ['./tsconfig.app.json', './tsconfig.node.json'],
+  include: ['src', 'scripts', 'vite.config.ts'],
+  exclude: ['dist', 'dist-single', 'node_modules'],
+  compilerOptions: {
+    baseUrl: '.',
+    paths: { '@/*': ['./src/*'] },
+  },
+};
