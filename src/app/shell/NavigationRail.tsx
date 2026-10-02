@@ -29,7 +29,7 @@ import { useTranslate } from '@/i18n';
 import { useRpcStore } from '@/store/rpc-store';
 import { useSettingsStore } from '@/store/settings';
 import { useUiStore } from '@/store/ui';
-import { useMduiEvent } from '@/ui/mdui';
+import { MduiIcon, useMduiEvent } from '@/ui/mdui';
 
 /* -------------------------------------------------------------------------- */
 /* items                                                                      */
@@ -54,16 +54,24 @@ function RailItem({ path, label, icon, activeIcon, badge, onNavigate }: RailItem
   });
 
   return (
+    /* The icons go into the `icon` / `active-icon` **slots**, never the
+       attributes. mdui's `icon` / `active-icon` attributes render
+       `<mdui-icon name>`, a Material Icons webfont ligature: the `outline:`
+       prefix mdui's font path cannot resolve (it splits variants on `--`, not
+       `:`), so clicking a row — which hides `.icon`, shows `.active-icon` and
+       animates `.indicator` from 2rem to 3.5rem — left the glyph missing and the
+       icon visibly out of place. Both slots are filled because mdui shows one and
+       hides the other; see navigation-rail-item-style.js. */
     <mdui-navigation-rail-item
       ref={ref}
       value={path}
-      icon={icon}
-      active-icon={activeIcon ?? icon}
       href={buildHashUrl(path)}
       aria-current={active ? 'page' : undefined}
       aria-label={label}
       title={label}
     >
+      <MduiIcon name={icon} slot="icon" />
+      <MduiIcon name={activeIcon ?? icon} slot="active-icon" />
       <span className="ariang-rail-item-label">{label}</span>
       {badge === undefined || badge <= 0 ? null : (
         <mdui-badge slot="badge">{badge}</mdui-badge>
@@ -82,13 +90,17 @@ function RailMenuButton() {
   });
 
   return (
+    /* `mdui-button-icon` has no icon slot: its default slot *is* the icon
+       position, and a filled default slot is what makes it skip the font
+       fallback. */
     <mdui-button-icon
       ref={ref}
       slot="top"
-      icon="menu"
       aria-label={t('Toggle Navigation')}
       title={t('Toggle Navigation')}
-    />
+    >
+      <MduiIcon name="menu" />
+    </mdui-button-icon>
   );
 }
 

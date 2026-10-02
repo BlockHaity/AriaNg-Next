@@ -503,7 +503,11 @@ export function TaskListToolbar({ kind, actions: provided }: TaskListToolbarProp
           - `MduiButton` does not forward a `slot`, so it cannot carry one.
           `src/ui/**` is not this page's to change, so both are set up here. */}
       <mdui-dropdown trigger="click" placement="bottom-start">
-        <mdui-button slot="trigger" variant="text" icon="sort" end-icon="expand-more">
+        <mdui-button slot="trigger" variant="text">
+          {/* Icons by slot, not by attribute: the attributes are the Material
+              Icons webfont path (see NavigationRail for the full note). */}
+          <MduiIcon name="sort" slot="icon" />
+          <MduiIcon name="expand-more" slot="end-icon" />
           {t('Display Order')}
         </mdui-button>
         {menuItems}

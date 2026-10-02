@@ -36,7 +36,8 @@ import {
   MduiTextarea,
   MduiTextField,
 } from '../mdui';
-import { hasIcon } from '../mdui/icons';
+import { ICON_TAGS, hasIcon, icon } from '../mdui/icons';
+import type { IconName } from '../mdui/icons';
 
 /** mdui attributes that resolve an icon through the Material Icons webfont. */
 const FONT_ICON_ATTRS = ['icon', 'end-icon', 'active-icon', 'selected-icon', 'delete-icon'];
@@ -235,6 +236,42 @@ describe('icons are projected into slots, never set as font attributes', () => {
       'table-chart',
     ]) {
       expect(hasIcon(name), `icon "${name}" is not registered`).toBe(true);
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* every registered name has both variants                                   */
+/* -------------------------------------------------------------------------- */
+
+describe('the SVG icon set is complete', () => {
+  /**
+   * `@mdui/icons` ships one file per variant, and each one self-registers, so a
+   * missing import leaves the tag undefined and the element renders as nothing —
+   * silently, because the tag name is still correct.
+   *
+   * That matters for `'outline:<name>'`, which is how the navigation rail spells
+   * its active-state icon. `hasIcon()` cannot catch it: it strips the flavour and
+   * reports `true` for any registered base name. Checking
+   * `customElements.get()` is the only way to know the element really exists.
+   */
+  const names = [...ICON_TAGS].filter((tag) => !tag.endsWith('--outlined')).map((tag) => tag.slice('mdui-icon-'.length));
+
+  it('registered a filled element for every name', () => {
+    const missing = names.filter((name) => customElements.get(`mdui-icon-${name}`) === undefined);
+    expect(missing, 'these names have no filled element registered').toEqual([]);
+  });
+
+  it("registered an outlined element for every name, so 'outline:<name>' resolves", () => {
+    const missing = names.filter((name) => customElements.get(`mdui-icon-${name}--outlined`) === undefined);
+    expect(missing, "these names have no '--outlined' element registered").toEqual([]);
+  });
+
+  it('maps every outline: name to a registered element', () => {
+    for (const name of names as IconName[]) {
+      const tag = icon(`outline:${name}`);
+      expect(customElements.get(tag), `outline:${name} → <${tag}> is not registered`).toBeDefined();
+      expect(hasIcon(`outline:${name}`)).toBe(true);
     }
   });
 });

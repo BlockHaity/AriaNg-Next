@@ -34,6 +34,9 @@ import {
   resolveLocaleKey,
 } from './locales';
 import type { LocaleLoader } from './locales';
+// mdui's own loader signature, so the locale map below is checked against what
+// `@lit/localize` actually expects rather than a hand-restated copy of it.
+import type { LoadFunc } from 'mdui/internal/localize.js';
 import type {
   I18nApi,
   LanguageMeta,
@@ -120,6 +123,19 @@ export interface I18nStore extends I18nApi {
    * a splash screen that wants to wait for the right strings.
    */
   ready(): Promise<void>;
+  /**
+   * Resolves once mdui's *own* strings have caught up with {@link store.locale}.
+   *
+   * The mdui sync is deliberately fire-and-forget (see `applyLocale`): mdui's
+   * strings are decorative where ours are not, so a slow or missing locale bundle
+   * must not delay the switch. That does leave a caller with no way to sequence
+   * anything after it, so the in-flight promise is exposed here — the boot gate
+   * uses it to know when component strings are settled, and the tests need it to
+   * observe the `loadLocale`/`setLocale` ordering at all.
+   *
+   * Never rejects: `syncMduiLocale` reports failures through the status channel.
+   */
+  mduiLocaleReady(): Promise<void>;
   /** Subscribe to `localechange`; returns an unsubscribe function. */
   subscribe(listener: LocaleChangeListener): Unsubscribe;
   /** Subscribe to `loading` / `ready` / `error` transitions. */
@@ -368,6 +384,77 @@ function createStore(options: CreateI18nOptions): I18nStore {
 
   let mduiListenerAttached = false;
 
+  /** In-flight mdui locale sync; see `mduiLocaleReady()`. */
+  let mduiSync: Promise<void> = Promise.resolve();
+
+  /**
+   * The mdui locale bundles, one static import per language we ship.
+   *
+   * mdui's `loadLocale()` takes a *loader function*, and the file it is handed is
+   * fetched on demand — so the mapping has to be a literal object rather than a
+   * template-literal `import()`, which Vite can only resolve as a glob (all 63
+   * bundles mdui ships) or not at all.
+   *
+   * A bundle exports `{ templates }`; that is the shape `@lit/localize` wants back
+   * (`LoadFunc`'s `LocaleModule`). Every code here is one of the ten this app can
+   * actually ask for, and each is present in mdui's own `targetLocales`
+   * allow-list, which is what `loadLocale` switches on.
+   *
+   * There is deliberately no `en-us` entry: that is mdui's `sourceLocale`, lit
+   * serves it straight from the component bundles and never asks the loader for it
+   * (and `mdui/locales/en-us.js` does not ship). Ten entries means only the ten
+   * languages this app offers end up in the build, out of the 63 mdui provides.
+   */
+
+  type MduiLocaleLoader = () => ReturnType<LoadFunc>;
+
+  const MDUI_LOCALE_LOADERS: Readonly<Record<string, MduiLocaleLoader>> = {
+    'cs-cz': () => import('mdui/locales/cs-cz.js'),
+    'de-de': () => import('mdui/locales/de-de.js'),
+    'es-es': () => import('mdui/locales/es-es.js'),
+    'fr-fr': () => import('mdui/locales/fr-fr.js'),
+    'it-it': () => import('mdui/locales/it-it.js'),
+    'ja-jp': () => import('mdui/locales/ja-jp.js'),
+    'pl-pl': () => import('mdui/locales/pl-pl.js'),
+    'ru-ru': () => import('mdui/locales/ru-ru.js'),
+    'zh-cn': () => import('mdui/locales/zh-cn.js'),
+    'zh-tw': () => import('mdui/locales/zh-tw.js'),
+  };
+
+  /**
+   * In-flight / completed `loadLocale()` call.
+   *
+   * `loadLocale` installs mdui's `getLocale`/`setLocale` by calling lit's
+   * `configureLocalization`, which also starts listening for lit-localize status
+   * events and re-dispatches them as `mdui-localize-status`. Calling it twice
+   * would register that listener twice and every status event would be reported
+   * twice, so it happens exactly once — and concurrent locale switches share the
+   * one call.
+   */
+  let mduiLocalizationReady: Promise<void> | null = null;
+
+  function ensureMduiLocalization(): Promise<void> {
+    if (mduiLocalizationReady === null) {
+      mduiLocalizationReady = (async () => {
+        const { loadLocale } = await import('mdui/functions/loadLocale.js');
+        loadLocale((code) => {
+          const loader = MDUI_LOCALE_LOADERS[code];
+          if (!loader) {
+            // Only reachable for a locale outside the eleven we ship, which
+            // `targetLocales` and `MDUI_LOCALE_FILES` are both written to prevent.
+            return Promise.reject(new Error(`[mdui] no locale bundle registered for "${code}"`));
+          }
+          return loader();
+        });
+      })().catch((error: unknown) => {
+        // Allow a later call to retry rather than caching the failure forever.
+        mduiLocalizationReady = null;
+        throw error;
+      });
+    }
+    return mduiLocalizationReady;
+  }
+
   /**
    * Drives mdui's own translations. Imported dynamically so the module — and
    * with it the whole locale catalogue mdui pulls in — is only fetched when a
@@ -383,17 +470,26 @@ function createStore(options: CreateI18nOptions): I18nStore {
       mduiListenerAttached = true;
     }
 
-    const meta = getLanguageMeta(locale);
+    // `LanguageMeta.mduiLocale` is already the region-qualified code mdui wants
+    // (`de-de`, `ja-jp`, …) — note this is the list in `./locales`, which is
+    // distinct from the metadata in `@/config/languages`; do not mix them up.
+    // English is `en-us`, mdui's `sourceLocale`, for which no bundle ships.
+    const mduiLocale = getLanguageMeta(locale).mduiLocale;
 
     try {
+      // `setLocale` throws "You must call `loadLocale` first to set up the
+      // localized template." until lit's localisation has been configured, which
+      // is what `ensureMduiLocalization()` does. Order matters: this is the bug
+      // that made every mdui-owned string (menu affordances, dialog buttons, the
+      // text field's pattern-error message) untranslatable.
+      await ensureMduiLocalization();
       const { setLocale } = await import('mdui/functions/setLocale.js');
-      // `LanguageMeta.mduiLocale` is a plain `string`; mdui narrows it to its
-      // own union of supported codes.
-      await setLocale(meta.mduiLocale as Parameters<typeof setLocale>[0]);
+      // `mduiLocale` is a plain `string`; mdui narrows it to its own union of
+      // supported codes.
+      await setLocale(mduiLocale as Parameters<typeof setLocale>[0]);
     } catch (error) {
-      // mdui throws "You must call `loadLocale` first" when the app never
-      // initialised localisation. That must not take the whole locale switch
-      // down — our own strings are already swapped by this point.
+      // A missing mdui bundle must not take the whole locale switch down — our
+      // own strings are already swapped by this point.
       setStatus('error', error instanceof Error ? error.message : String(error));
     }
   }
@@ -432,8 +528,9 @@ function createStore(options: CreateI18nOptions): I18nStore {
     setStatus('ready');
 
     // Fire-and-forget: mdui's own strings are decorative, ours are not, so the
-    // locale switch must not block on them.
-    void syncMduiLocale(resolved);
+    // locale switch must not block on them. The promise is kept so
+    // `mduiLocaleReady()` can let a caller sequence after it anyway.
+    mduiSync = syncMduiLocale(resolved);
   }
 
   const store: I18nStore = {
@@ -442,6 +539,7 @@ function createStore(options: CreateI18nOptions): I18nStore {
       return currentLocale;
     },
     setLocale,
+    mduiLocaleReady: () => mduiSync,
     availableLocales: languages,
     get longDatePattern() {
       return getLanguageMeta(currentLocale).longDatePattern ?? 'MM/DD/YYYY HH:mm:ss';

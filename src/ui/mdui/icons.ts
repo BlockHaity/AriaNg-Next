@@ -91,7 +91,11 @@ import '@mdui/icons/play-arrow.js';
 import '@mdui/icons/pause.js';
 import '@mdui/icons/download.js';
 
-// Outlined variants. Every one of the above ships an `--outlined` sibling.
+// Outlined variants. Every one of the above ships an `--outlined` sibling, and the
+// invariant is enforced: `'outline:<name>'` must always resolve to a *registered*
+// element, or the active state of a component that swaps icons on selection (the
+// navigation rail) renders nothing. See `icon-slots.test.tsx`.
+import '@mdui/icons/contrast--outlined.js';
 import '@mdui/icons/graphic-eq--outlined.js';
 import '@mdui/icons/fiber-manual-record--outlined.js';
 import '@mdui/icons/data-exploration--outlined.js';

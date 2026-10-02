@@ -104,7 +104,13 @@ function ContextMenuItem({ icon, title, selected = false, onClick, children }: C
     // `aria-selected` as a string: React writes a boolean onto a custom element as
     // a property, which serialises to `aria-selected=""` and tells a screen reader
     // nothing.
-    <mdui-menu-item ref={ref} icon={icon} title={title} aria-selected={selected ? 'true' : 'false'}>
+    // Icons by slot, not by attribute: `mdui-menu-item`'s `icon` attribute is the
+    // webfont path. It matters most here, because clicking the row sets
+    // `selected`, which makes mdui swap `<slot name="icon">` for
+    // `<slot name="selected-icon">` — the icon attribute is then not rendered at
+    // all and the row's leading slot changes shape.
+    <mdui-menu-item ref={ref} title={title} aria-selected={selected ? 'true' : 'false'}>
+      {icon ? <MduiIcon name={icon} slot="icon" /> : null}
       {children}
     </mdui-menu-item>
   );
@@ -200,7 +206,8 @@ export function TaskContextMenu({ kind, actions: provided }: TaskContextMenuProp
 
       {/* item 7 — always present; the 7 order types live in a real mdui submenu
           (`slot="submenu"`), which AriaNg hand-rolled with Bootstrap. */}
-      <mdui-menu-item key="order" icon="sort" className="task-context-submenu-trigger">
+      <mdui-menu-item key="order" className="task-context-submenu-trigger">
+        <MduiIcon name="sort" slot="icon" />
         {t('Display Order')}
         <mdui-menu slot="submenu">
           {DISPLAY_ORDER_ENTRIES.map((entry) => {

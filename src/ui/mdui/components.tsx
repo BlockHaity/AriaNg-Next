@@ -1605,8 +1605,20 @@ export interface MduiAvatarProps extends Styleable {
   fit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
 }
 
-/** `<mdui-avatar>` with either an image `src` or a fallback `icon` + `label`. */
+/**
+ * `<mdui-avatar>` with either an image `src` or a fallback `icon` + `label`.
+ *
+ * `mdui-avatar` has no icon slot. Its default slot *is* the icon position, but it
+ * is also where the `<img>` goes, and a filled default slot makes mdui skip the
+ * image — so the icon is only projected when there is no `src`, mirroring mdui's
+ * own `src`-before-`icon` precedence. Passing the `icon` attribute instead would
+ * put it on the Material Icons webfont path (see `slotIcon()`).
+ */
 export function MduiAvatar(props: MduiAvatarProps) {
   const { src, icon, label, fit, className, style } = props;
-  return <mdui-avatar className={className} style={style} src={src} icon={icon} label={label} fit={fit} />;
+  return (
+    <mdui-avatar className={className} style={style} src={src} label={label} fit={fit}>
+      {src ? null : slotIcon(icon, undefined)}
+    </mdui-avatar>
+  );
 }
