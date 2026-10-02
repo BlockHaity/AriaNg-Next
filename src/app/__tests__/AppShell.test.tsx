@@ -525,8 +525,11 @@ describe('AppShell display order menu', () => {
     const { container } = renderShell();
     const items = [...displayOrderMenu(container).querySelectorAll('mdui-menu-item')];
 
-    // The check mark is the `icon` mdui renders in the row's leading slot.
-    const checked = items.filter((item) => item.getAttribute('icon') === 'check');
+    // The check mark is the icon mdui projects into the row's leading `icon`
+    // slot. It is deliberately *not* the `icon` attribute: that attribute is
+    // font-only (it renders `<mdui-icon name>`, which needs the Material Icons
+    // webfont) and would show the literal word "check" instead of a tick.
+    const checked = items.filter((item) => item.querySelector('mdui-icon-check[slot="icon"]'));
 
     expect(checked).toHaveLength(1);
     expect(checked[0]?.textContent?.trim()).toBe('Default');

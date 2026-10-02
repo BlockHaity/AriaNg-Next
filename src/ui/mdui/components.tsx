@@ -97,6 +97,42 @@ export function MduiIcon({ name, size = '1.5rem', slot, className, style }: Mdui
     : createElement('mdui-icon', { ...props, name });
 }
 
+/**
+ * Builds the icon child for an mdui component that accepts one through a slot.
+ *
+ * mdui's `icon` **attribute** is font-only: every component renders
+ * `<mdui-icon name="play-arrow">`, which needs the Material Icons webfont. We
+ * never load that font, so passing the attribute made every icon render as the
+ * literal words "play-arrow" / "delete" / "download".
+ *
+ * Each of those components also accepts an inline icon element, and prefers it
+ * over the attribute:
+ *   - `mdui-button`            → `slot="icon"` / `slot="end-icon"`
+ *   - `mdui-button-icon`       → default slot (and `slot="selected-icon"`)
+ *   - `mdui-fab`               → `slot="icon"`
+ *   - `mdui-chip`              → `slot="icon"` / `selected-icon` / `end-icon`
+ *   - `mdui-list-item`         → `slot="icon"` / `slot="end-icon"`
+ *   - `mdui-menu-item`         → `slot="icon"` / `slot="end-icon"`
+ *   - `mdui-navigation-*-item` → `slot="icon"` / `slot="active-icon"`
+ *   - `mdui-segmented-button`  → `slot="icon"`
+ *   - `mdui-text-field`        → `slot="icon"` / `slot="end-icon"`
+ *   - `mdui-tab`               → `slot="icon"`
+ *
+ * `mdui-list-item` additionally sniffs the child with `isNodeName(el, 'mdui-icon')`,
+ * so the `@mdui/icons` elements are recognised as icons there too.
+ *
+ * Returns `null` for an unknown name rather than falling back to the font, so a
+ * typo shows nothing instead of stray words; callers use `MduiIcon` directly for
+ * icons that live outside a component slot.
+ */
+function slotIcon(name: string | undefined, slot?: string, size?: string): ReactNode {
+  if (!name || !hasIcon(name)) return null;
+  return createElement(icon(name), {
+    ...(slot ? { slot } : {}),
+    style: size ? { fontSize: size } : undefined,
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /* MduiButton                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -133,8 +169,6 @@ export function MduiButton(props: MduiButtonProps) {
       className={className}
       style={style}
       variant={variant}
-      icon={icon}
-      end-icon={endIcon}
       disabled={disabled}
       loading={loading}
       full-width={fullWidth}
@@ -142,6 +176,9 @@ export function MduiButton(props: MduiButtonProps) {
       target={target}
       type={type}
     >
+      {/* Slotted, not the `icon` attribute — see slotIcon(). */}
+      {slotIcon(icon, 'icon')}
+      {slotIcon(endIcon, 'end-icon')}
       {children}
     </mdui-button>
   );
@@ -199,13 +236,16 @@ export function MduiIconButton(props: MduiIconButtonProps) {
       className={className}
       style={style}
       variant={variant}
-      icon={icon}
-      selected-icon={selectedIcon}
       disabled={disabled}
       aria-label={label}
       title={label}
       aria-pressed={toggle ? selected : undefined}
-    />
+    >
+      {/* `mdui-button-icon` has no icon slot: its default slot *is* the icon
+          position, and a filled default slot makes it skip the font path. */}
+      {slotIcon(icon, undefined)}
+      {slotIcon(selectedIcon, 'selected-icon')}
+    </mdui-button-icon>
   );
 }
 
@@ -236,7 +276,6 @@ export function MduiFab(props: MduiFabProps) {
       ref={ref}
       className={className}
       style={style}
-      icon={icon}
       variant={variant}
       size={size}
       href={href}
@@ -245,6 +284,7 @@ export function MduiFab(props: MduiFabProps) {
       extended={label !== undefined}
       aria-label={label ?? icon}
     >
+      {slotIcon(icon, 'icon')}
       {label}
     </mdui-fab>
   );
@@ -343,9 +383,9 @@ export function MduiListItem(props: MduiListItemProps) {
       description={description}
       headline-line={headlineLine}
       description-line={descriptionLine}
-      icon={startIcon}
-      end-icon={endIcon}
     >
+      {slotIcon(startIcon, 'icon')}
+      {slotIcon(endIcon, 'end-icon')}
       {children}
     </mdui-list-item>
   );
@@ -586,11 +626,14 @@ export function MduiTextField(props: MduiTextFieldProps) {
       clearable={clearable}
       required={required}
       helper={helperText}
-      icon={icon}
-      end-icon={endIcon}
       rows={rows}
       max-rows={maxRows}
-    />
+    >
+      {/* `rows > 1` is what makes `<mdui-text-field>` render a real textarea;
+          mdui 2.1.5 has no separate `<mdui-textarea>` element. */}
+      {slotIcon(icon, 'icon')}
+      {slotIcon(endIcon, 'end-icon')}
+    </mdui-text-field>
   );
 }
 
@@ -604,6 +647,8 @@ export type MduiTextareaProps = MduiTextFieldProps;
  * `TextField#isTextarea` in `components/text-field/index.js`).
  */
 export function MduiTextarea(props: MduiTextareaProps) {
+  // mdui 2.1.5 ships no `<mdui-textarea>`; a text field with `rows > 1` renders
+  // a real `<textarea>` (the `isTextarea` getter), which is what this is.
   return <MduiTextField {...props} rows={props.rows ?? 4} type={undefined} />;
 }
 
@@ -656,7 +701,8 @@ export function MduiSelect(props: MduiSelectProps) {
       helper={helperText}
     >
       {items.map((item) => (
-        <mdui-menu-item key={item.value} value={item.value} disabled={item.disabled} icon={item.icon}>
+        <mdui-menu-item key={item.value} value={item.value} disabled={item.disabled}>
+          {slotIcon(item.icon, 'icon')}
           {item.label}
         </mdui-menu-item>
       ))}
@@ -762,14 +808,15 @@ export function MduiChip(props: MduiChipProps) {
       className={className}
       style={style}
       variant={variant}
-      icon={icon}
       selectable={selectable}
       disabled={disabled}
       deletable={removable}
-      delete-icon={deleteIcon}
       elevated={elevated}
       aria-selected={selectable ? Boolean(selected) : undefined}
     >
+      {slotIcon(icon, 'icon')}
+      {slotIcon(icon, 'selected-icon')}
+      {deleteIcon ? slotIcon(deleteIcon, 'delete-icon') : null}
       {children}
     </mdui-chip>
   );
@@ -1017,7 +1064,8 @@ export function MduiSegmentedButton(props: MduiSegmentedButtonProps) {
       full-width={fullWidth}
     >
       {items.map((item) => (
-        <mdui-segmented-button key={item.value} value={item.value} icon={item.icon} disabled={item.disabled}>
+        <mdui-segmented-button key={item.value} value={item.value} disabled={item.disabled}>
+          {slotIcon(item.icon, 'icon')}
           {item.label}
         </mdui-segmented-button>
       ))}
@@ -1080,7 +1128,8 @@ export interface MduiTabProps {
 /** `<mdui-tab>`; the owning `<mdui-tabs>` drives the active state. */
 export function MduiTab({ value, label, icon, badge, disabled, children }: MduiTabProps) {
   return (
-    <mdui-tab value={value} icon={icon} aria-disabled={disabled || undefined} {...(disabled ? { tabIndex: -1 } : {})}>
+    <mdui-tab value={value} aria-disabled={disabled || undefined} {...(disabled ? { tabIndex: -1 } : {})}>
+      {slotIcon(icon, 'icon')}
       {label}
       {badge === undefined ? null : <mdui-badge slot="badge">{badge}</mdui-badge>}
       {children}
@@ -1285,13 +1334,13 @@ export function MduiMenuItem(props: MduiMenuItemProps) {
       style={style}
       value={value}
       disabled={disabled}
-      icon={icon}
-      end-icon={endIcon}
       end-text={endText}
       href={href}
       target={target}
       aria-selected={selected}
     >
+      {slotIcon(icon, 'icon')}
+      {slotIcon(endIcon, 'end-icon')}
       {children}
     </mdui-menu-item>
   );
@@ -1486,12 +1535,12 @@ export function MduiNavigationRailItem(props: MduiNavigationRailItemProps) {
       className={className}
       style={style}
       value={value}
-      icon={icon}
-      active-icon={activeIcon}
       href={href}
       aria-label={label}
       title={label}
     >
+      {slotIcon(icon, 'icon')}
+      {slotIcon(activeIcon, 'active-icon')}
       {label}
       {badge === undefined ? null : <mdui-badge slot="badge">{badge}</mdui-badge>}
     </mdui-navigation-rail-item>
@@ -1535,11 +1584,11 @@ export function MduiNavigationBarItem(props: MduiNavigationBarItemProps) {
       className={className}
       style={style}
       value={value}
-      icon={icon}
-      active-icon={activeIcon}
       href={href}
       aria-label={label}
     >
+      {slotIcon(icon, 'icon')}
+      {slotIcon(activeIcon, 'active-icon')}
       {label}
       {badge === undefined ? null : <mdui-badge slot="badge">{badge}</mdui-badge>}
     </mdui-navigation-bar-item>

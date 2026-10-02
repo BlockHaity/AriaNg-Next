@@ -126,10 +126,27 @@ this app uses are imported (see `icons.ts`).
 name (e.g. inside a custom wrapper). `ICON_TAGS` / `hasIcon(name)` report whether
 a name was actually imported.
 
-> `<mdui-icon name="…">` renders the name as a **font glyph** and needs the
-> Material Icons webfont. `MduiIcon` uses the SVG elements instead, which need no
-> font — that is why the wrappers prefer them; only names outside the imported
-> set fall back to the font-based element.
+> **Never pass an `icon` / `end-icon` / `active-icon` / `selected-icon` /
+> `delete-icon` *attribute* to an mdui element.** Those attributes are font-only:
+> mdui renders `<mdui-icon name="play-arrow">`, which resolves through the
+> Material Icons **webfont ligature**. This app never loads that webfont, so the
+> attribute renders as the literal words "play-arrow" / "delete" / "download".
+>
+> Pass the icon as a **slotted child** instead — the wrappers in `components.tsx`
+> do this via the internal `slotIcon(name, slot)` helper, which returns `null` for
+> an unregistered name rather than silently falling back to the font. Slots in
+> use: `mdui-button` (`icon`, `end-icon`), `mdui-button-icon` (default slot,
+> `selected-icon`), `mdui-fab` (`icon`), `mdui-chip` (`icon`, `selected-icon`,
+> `delete-icon`), `mdui-list-item` / `mdui-menu-item` (`icon`, `end-icon`),
+> `mdui-navigation-rail-item` / `mdui-navigation-bar-item` (`icon`, `active-icon`),
+> `mdui-segmented-button` (`icon`), `mdui-tab` (`icon`), `mdui-text-field`
+> (`icon`, `end-icon`), `mdui-dialog` (`icon`).
+>
+> `src/ui/__tests__/icon-slots.test.tsx` fails if any of those attributes comes
+> back, so this cannot regress silently.
+>
+> `<mdui-icon name="…">` still exists as the documented fallback for names
+> outside the imported SVG set.
 
 Available names (`IconName`): `download` `pause` `play-arrow` `stop` `delete`
 `settings` `add` `search` `close` `refresh` `more-vert` `folder` `folder-open`
