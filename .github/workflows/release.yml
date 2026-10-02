@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, e.g. v0.1.0 (must match package.json version)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The tag is needed for the release target; full history keeps
+          # `gh release create --generate-notes` able to diff against the
+          # previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          # A tag push reports the tag as the ref; a manual run takes it from
+          # the workflow input.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          case "$TAG" in
+            v*) ;;
+            *)
+              echo "::error::tag '$TAG' must start with v (e.g. v0.1.0)"
+              exit 1
+              ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches package.json version
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "v$PKG_VERSION" ]; then
+            echo "::error::tag $TAG does not match package.json version v$PKG_VERSION — bump package.json or fix the tag"
+            exit 1
+          fi
+          echo "releasing $TAG (package.json $PKG_VERSION)"
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Test
+        run: npx vitest run
+
+      - name: Build (standard)
+        run: npx vite build
+
+      - name: Assert build output
+        run: |
+          set -euo pipefail
+          test -f dist/index.html || { echo "::error::dist/index.html was not produced"; exit 1; }
+          test -f dist/sw.js || { echo "::error::dist/sw.js was not produced"; exit 1; }
+          test -f dist/manifest.webmanifest || { echo "::error::dist/manifest.webmanifest was not produced"; exit 1; }
+
+      - name: Assert all asset references are relative
+        run: node scripts/check-bundle-size.mjs --dir dist --check-relative-assets
+
+      - name: Build (single file)
+        run: npx vite build --mode single
+
+      - name: Assert everything is inlined
+        run: |
+          set -euo pipefail
+          test -f dist-single/index.html || { echo "::error::dist-single/index.html was not produced"; exit 1; }
+          node -e '
+            const fs = require("node:fs");
+            const html = fs.readFileSync("dist-single/index.html", "utf8");
+            const external = [
+              ...html.matchAll(/<script\b[^>]*\bsrc\s*=/gi),
+              ...html.matchAll(/<link\b[^>]*\brel\s*=\s*["\x27]?stylesheet/i),
+            ];
+            if (external.length > 0) {
+              for (const match of external) console.error(match[0]);
+              console.error("::error::dist-single/index.html still references external scripts or stylesheets");
+              process.exit(1);
+            }
+          '
+
+      - name: MD3 colour guard
+        run: node scripts/check-no-color-literals.mjs
+
+      - name: Check single-file size budget
+        run: node scripts/check-bundle-size.mjs --dir dist-single --entry index.html --budget 3145728
+
+      - name: Archive assets
+        run: |
+          set -euo pipefail
+          # A single downloadable HTML is the artefact users double-click; the
+          # standard build is what gets served behind a web server.
+          cp dist-single/index.html "ariang-next-${GITHUB_REF_NAME#v}-single.html"
+          tar -czf "ariang-next-${GITHUB_REF_NAME#v}-dist.tar.gz" -C dist .
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.tag.outputs.tag }}
+          path: |
+            dist/
+            dist-single/
+            ariang-next-*-single.html
+            ariang-next-*-dist.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # --generate-notes lets GitHub derive the changelog from the merged
+          # pull requests since the previous tag.
+          gh release create "$TAG" \
+            "ariang-next-${TAG#v}-single.html" \
+            "ariang-next-${TAG#v}-dist.tar.gz" \
+            --title "$TAG" \
+            --generate-notes

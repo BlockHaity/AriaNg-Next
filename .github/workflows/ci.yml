@@ -1,0 +1,234 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Superseded runs for the same ref are pointless: their result is discarded
+# the moment a newer commit lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `--max-warnings 0` is deliberately NOT set: the config downgrades
+      # `@typescript-eslint/no-explicit-any`, `no-console` and
+      # `consistent-type-imports` to warnings, so this gate is about errors.
+      - name: ESLint
+        run: npx eslint . --format=stylish
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: tsc -b
+        run: npx tsc -b
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests (with coverage)
+        # `--coverage` needs @vitest/coverage-v8, which is not yet a devDependency.
+        # Until it is added the run must not fail, so coverage is opt-in on the
+        # presence of the package (see docs/ci.md).
+        run: |
+          set -euo pipefail
+          if [ -d node_modules/@vitest/coverage-v8 ]; then
+            COVERAGE=(--coverage --coverage.reporter=text --coverage.reporter=json-summary)
+          else
+            COVERAGE=()
+            echo "::notice title=Coverage skipped::@vitest/coverage-v8 is not installed; run without coverage. See docs/ci.md."
+          fi
+          npx vitest run "${COVERAGE[@]}"
+
+      - name: Publish coverage summary
+        if: always() && hashFiles('coverage/coverage-summary.json') != ''
+        run: |
+          {
+            echo '## Coverage'
+            echo
+            echo '| File | Lines | Branches | Functions | Statements |'
+            echo '| --- | ---: | ---: | ---: | ---: |'
+            node -e '
+              const summary = require("./coverage/coverage-summary.json");
+              const pct = (v) => (typeof v === "number" ? (v === 100 ? "100%" : v.toFixed(1) + "%") : "n/a");
+              const rows = Object.entries(summary)
+                .filter(([key]) => key !== "total")
+                .sort((a, b) => a[0].localeCompare(b[0]));
+              for (const [file, data] of rows) {
+                console.log(`| ${file} | ${pct(data.lines?.pct)} | ${pct(data.branches?.pct)} | ${pct(data.functions?.pct)} | ${pct(data.statements?.pct)} |`);
+              }
+              if (rows.length === 0) {
+                const t = summary.total;
+                console.log(`| total | ${pct(t?.lines?.pct)} | ${pct(t?.branches?.pct)} | ${pct(t?.functions?.pct)} | ${pct(t?.statements?.pct)} |`);
+              }
+            '
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  build:standard:
+    name: Build (standard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npx vite build
+
+      - name: Assert build output
+        run: |
+          set -euo pipefail
+          test -f dist/index.html || { echo "::error::dist/index.html was not produced"; exit 1; }
+          test -f dist/sw.js || { echo "::error::dist/sw.js was not produced (PWA service worker)"; exit 1; }
+          test -f dist/manifest.webmanifest || { echo "::error::dist/manifest.webmanifest was not produced"; exit 1; }
+
+      - name: Assert all asset references are relative
+        # The app must run from any sub-path, so `base` has to stay './'.
+        # A single `src="/assets/…"` pins it to the domain root.
+        run: node scripts/check-bundle-size.mjs --dir dist --check-relative-assets
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-standard
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  build:single:
+    name: Build (single file)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npx vite build --mode single
+
+      - name: Assert everything is inlined
+        run: |
+          set -euo pipefail
+          test -f dist-single/index.html || { echo "::error::dist-single/index.html was not produced"; exit 1; }
+          node -e '
+            const fs = require("node:fs");
+            const html = fs.readFileSync("dist-single/index.html", "utf8");
+            const external = [
+              ...html.matchAll(/<script\b[^>]*\bsrc\s*=/gi),
+              ...html.matchAll(/<link\b[^>]*\brel\s*=\s*["\x27]?stylesheet/i),
+            ];
+            if (external.length > 0) {
+              for (const match of external) console.error(match[0]);
+              console.error("::error::dist-single/index.html still references external scripts or stylesheets");
+              process.exit(1);
+            }
+          '
+
+      - name: Check single-file size budget
+        # 3 MiB: the whole application inlined into one document.
+        run: node scripts/check-bundle-size.mjs --dir dist-single --entry index.html --budget 3145728
+
+      - name: Upload dist-single
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-single
+          path: dist-single/
+          if-no-files-found: error
+          retention-days: 7
+
+  md3-guard:
+    name: MD3 colour guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Reject hard-coded colours
+        run: node scripts/check-no-color-literals.mjs
+
+      - name: Guard self-tests
+        # The scripts suite lives outside src/, so it needs its own project
+        # rather than a change to the shared vitest include.
+        run: |
+          set -euo pipefail
+          cat > vitest.guard.config.mts <<'EOF'
+          import { defineConfig } from 'vitest/config';
+
+          export default defineConfig({
+            test: {
+              environment: 'node',
+              include: ['scripts/**/*.test.mjs'],
+            },
+          });
+          EOF
+          npx vitest run --config vitest.guard.config.mts

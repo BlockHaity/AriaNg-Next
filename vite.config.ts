@@ -142,7 +142,10 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      // `scripts/**` holds the guard scripts' own tests (the MD3 colour guard
+      // in particular), so they must be part of the default run.
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.{test,spec}.{ts,mjs}'],
+      exclude: ['**/node_modules/**', '**/dist/**', '**/dist-single/**'],
       css: false,
       coverage: {
         provider: 'v8',

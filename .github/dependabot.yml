@@ -1,0 +1,43 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      # Routine patch/minor bumps for the framework and tooling stay together so
+      # a React or Vite bump is reviewable as one change.
+      dependencies:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+      # Deliberate majors (React 19, Vite 7, mdui 2) get their own pull
+      # request, since they can require source changes.
+      major-updates:
+        update-types:
+          - major
+    labels:
+      - dependencies
+    commit-message:
+      prefix: 'chore(deps)'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: 'chore(ci)'
