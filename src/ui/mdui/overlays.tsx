@@ -99,7 +99,7 @@ export function MduiDialog(props: MduiDialogProps) {
     className,
     style,
   } = props;
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<MduiDialogElement>(null);
 
   useMduiEvent(ref, 'closed', () => onClosed?.());
   useMduiEvent(ref, 'close', () => onCancel?.());
@@ -131,9 +131,9 @@ export function MduiDialog(props: MduiDialogProps) {
       className={className}
       style={style}
       fullscreen={fullScreen}
-      closeOnEsc={closeOnEsc}
-      closeOnOverlayClick={closeOnOverlayClick}
-      stackedActions={stackedActions}
+      close-on-esc={closeOnEsc}
+      close-on-overlay-click={closeOnOverlayClick}
+      stacked-actions={stackedActions}
       headline={plainTitle ? String(title) : undefined}
       description={plainDescription ? String(description) : undefined}
     >
@@ -173,7 +173,7 @@ export interface MduiSnackbarProps extends Styleable {
 export function MduiSnackbar(props: MduiSnackbarProps) {
   const { message, open, action, position, timeout, closeable, messageLine, onActionClick, onClosed, className, style } =
     props;
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<MduiSnackbarElement>(null);
 
   useMduiEvent(ref, 'closed', () => onClosed?.());
   useMduiEvent(ref, 'action-click', () => onActionClick?.());
@@ -187,8 +187,8 @@ export function MduiSnackbar(props: MduiSnackbarProps) {
       placement={position}
       action={action}
       closeable={closeable}
-      messageLine={messageLine}
-      autoCloseDelay={timeout}
+      message-line={messageLine}
+      auto-close-delay={timeout}
     >
       {message}
     </mdui-snackbar>

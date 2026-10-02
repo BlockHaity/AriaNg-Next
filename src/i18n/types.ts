@@ -27,9 +27,15 @@ export interface TranslationBundle {
   [key: string]: string;
 }
 
-/** Nested bundle as produced by parsing the original `[section]` INI files. */
+/**
+ * Nested bundle as produced by parsing the original `[section]` INI files.
+ *
+ * Leaves are plain strings. The recursive union matters: AriaNg's `[global]`
+ * section mixes literal keys (`'File Name'`) with sub-sections (`options`,
+ * `error`, `rpc`, ...), so a node can be either a string or another table.
+ */
 export interface TranslationTable {
-  [section: string]: TranslationBundle | TranslationTable;
+  [key: string]: string | TranslationTable;
 }
 
 export interface I18nApi {

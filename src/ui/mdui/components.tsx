@@ -536,24 +536,29 @@ export function MduiTextField(props: MduiTextFieldProps) {
     className,
     style,
   } = props;
-  const ref = useRef<TextField>(null);
-  const hostRef = ref as unknown as RefObject<HTMLElement>;
+  const ref = useRef<HTMLElement>(null);
+  // `<mdui-text-field>`'s own declaration types `autocorrect` as `string`, which
+  // collides with the native `HTMLElement.autocorrect: boolean` and therefore
+  // makes `TextField` unassignable to `HTMLElement`. The hooks only need
+  // `addEventListener` / a `[prop]` slot, so they take the plain `HTMLElement`
+  // ref and only the two typed reads below go through this alias.
+  const field = ref as unknown as TextField | null;
 
   useMduiModel(ref, value, (next: string | undefined) => onInput?.(next ?? ''), 'input');
-  useMduiEvent(hostRef, 'change', () => onChange?.(ref.current?.value ?? ''));
-  useMduiEvent(hostRef, 'keydown', (_detail, event) => {
-    if ((event as KeyboardEvent).key === 'Enter') onEnter?.(ref.current?.value ?? '');
+  useMduiEvent(ref, 'change', () => onChange?.(field?.value ?? ''));
+  useMduiEvent(ref, 'keydown', (_detail, event) => {
+    if ((event as KeyboardEvent).key === 'Enter') onEnter?.(field?.value ?? '');
   });
 
   // Re-applied when the value changes too: mdui re-validates on input, so a
   // value that became invalid needs the custom message back in place.
   useEffect(() => {
-    ref.current?.setCustomValidity(error ?? '');
-  }, [error, value]);
+    field?.setCustomValidity(error ?? '');
+  }, [error, value, field]);
 
   return (
     <mdui-text-field
-      ref={hostRef}
+      ref={ref}
       className={className}
       style={style}
       label={label}

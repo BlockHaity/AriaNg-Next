@@ -25,11 +25,8 @@ import type { LanguageMeta, LocaleCode, TranslationTable } from '../types';
  * Vite replaces this with a literal at build time (`define` in
  * `vite.config.ts`).
  *
- * TODO: drop this redeclaration once `src/vite-env.d.ts` exports its
- * `__BUILD_TARGET__` globally. That file ends with `export {}`, which makes it
- * a module, so its `declare const` never reaches the global scope.
+ * `__BUILD_TARGET__` is declared globally by `src/vite-env.d.ts`.
  */
-declare const __BUILD_TARGET__: 'standard' | 'single';
 
 /** The build target this bundle was compiled for. */
 export const BUILD_TARGET: 'standard' | 'single' = __BUILD_TARGET__;

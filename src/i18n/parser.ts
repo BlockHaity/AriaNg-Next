@@ -21,15 +21,14 @@ import type { TranslationTable } from './types';
  *
  * `types.ts` declares `TranslationTable` as
  * `{ [section: string]: TranslationBundle | TranslationTable }`, which stops
- * one level short of the data: it types a leaf as a `TranslationBundle` (an
+ * one level short of the data: it typed a leaf as a `TranslationBundle` (an
  * object of strings) whereas AriaNg stores a plain `string` there — e.g.
  * `table['Task Name'] === 'Task Name'` and
- * `table.options['dir.name'] === 'Directory'`. A `TranslationNode` and a
- * `TranslationTable` describe the same runtime object, so the two cross with a
- * cast, and every function below keeps its public signature in terms of the
- * shared `TranslationTable` while working on `TranslationNode` internally.
+ * `table.options['dir.name'] === 'Directory'`. `TranslationTable` now models
+ * that recursive union correctly, so this is simply an alias kept for the
+ * parser's internal signatures.
  */
-export type TranslationNode = { [key: string]: string | TranslationNode };
+export type TranslationNode = TranslationTable;
 
 /** Section header whose keys live at the root of the table, unprefixed. */
 const GLOBAL_SECTION = 'global';
