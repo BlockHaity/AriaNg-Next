@@ -535,3 +535,72 @@ describe('AppShell display order menu', () => {
     expect(checked[0]?.textContent?.trim()).toBe('Default');
   });
 });
+/* -------------------------------------------------------------------------- */
+/* theme                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Dark mode was reported as missing. The machinery was all present — mdui's
+ * `mdui-theme-*` class, `setTheme()`, the `prefers-color-scheme` resolution — but
+ * with the default pinned to `light` and the only control buried in
+ * Settings → AriaNg → Global, there was nothing on screen to find.
+ *
+ * These tests pin the two things that were actually wrong: the default follows
+ * the OS, and the toolbar carries a switch that writes through the same
+ * `setTheme()` single write path everything else uses.
+ */
+describe('AppShell theme switch', () => {
+  /** The mdui theme classes mdui's `setTheme` maintains on `<html>`. */
+  function themeClasses(): string[] {
+    return [...document.documentElement.classList].filter((name) => name.startsWith('mdui-theme-'));
+  }
+
+  function themeButton(container: HTMLElement): Element {
+    const found = [...container.querySelectorAll('mdui-top-app-bar mdui-button-icon')].find(
+      (button) => button.querySelector('mdui-icon-light-mode, mdui-icon-dark-mode, mdui-icon-contrast'),
+    );
+    if (!found) throw new Error('the theme switch was not rendered');
+    return found;
+  }
+
+  it('ships a theme switch in the top app bar', () => {
+    const { container } = renderShell();
+    expect(themeButton(container)).toBeTruthy();
+  });
+
+  it('cycles light → dark → system and writes each step to the store', () => {
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'light' } }));
+    const { container } = renderShell();
+
+    // Boot applies the class (`BootstrapGate` does that in the real app), so the
+    // first assertion here is about what a click writes, not the initial state.
+    fireEvent.click(themeButton(container));
+    expect(useSettingsStore.getState().settings.theme).toBe('dark');
+    expect(themeClasses()).toEqual(['mdui-theme-dark']);
+
+    fireEvent.click(themeButton(container));
+    expect(useSettingsStore.getState().settings.theme).toBe('system');
+    expect(themeClasses()).toEqual(['mdui-theme-auto']);
+
+    // The cycle wraps rather than sticking at the end.
+    fireEvent.click(themeButton(container));
+    expect(useSettingsStore.getState().settings.theme).toBe('light');
+    expect(themeClasses()).toEqual(['mdui-theme-light']);
+  });
+
+  it('emits themechange so token-driven charts restyle with the switch', () => {
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'light' } }));
+    const { container } = renderShell();
+
+    const seen: string[] = [];
+    const listener = (event: Event) => {
+      seen.push((event as CustomEvent<{ setting: string }>).detail.setting);
+    };
+    window.addEventListener('themechange', listener);
+
+    fireEvent.click(themeButton(container));
+    window.removeEventListener('themechange', listener);
+
+    expect(seen).toContain('dark');
+  });
+});

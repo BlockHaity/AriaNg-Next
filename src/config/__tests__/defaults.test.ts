@@ -39,7 +39,7 @@ describe('DEFAULT_SETTINGS', () => {
   it('ports ariaNgDefaultOptions', () => {
     expect(DEFAULT_SETTINGS).toEqual({
       language: 'en',
-      theme: 'light',
+      theme: 'system',
       title: '${downspeed}, ${upspeed} - ${title}',
       titleRefreshInterval: 5000,
       browserNotification: false,
@@ -95,7 +95,7 @@ describe('createDefaultSettings', () => {
     settings.extendRpcServers.push(cloneRpcProfile(DEFAULT_RPC_PROFILE));
 
     expect(DEFAULT_SETTINGS.language).toBe('en');
-    expect(DEFAULT_SETTINGS.theme).toBe('light');
+    expect(DEFAULT_SETTINGS.theme).toBe('system');
     expect(DEFAULT_SETTINGS.rpcPort).toBe('6800');
     expect(DEFAULT_SETTINGS.extendRpcServers).toEqual([]);
   });

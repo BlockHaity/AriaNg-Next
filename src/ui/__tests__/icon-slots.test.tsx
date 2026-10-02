@@ -47,6 +47,10 @@ const FONT_ICON_ATTRS = ['icon', 'end-icon', 'active-icon', 'selected-icon', 'de
  * React 19 writes unknown custom-element props through as attributes, so a
  * leftover `icon={…}` on `<mdui-button>` is observable here exactly as it would
  * be in the browser.
+ *
+ * A `<mdui-icon name>` **child** is fine — that is the network-font fallback for
+ * names outside the imported SVG set, and `index.html` loads the webfont for it.
+ * It is the *attribute* that must never come back.
  */
 function expectNoFontIconAttrs(root: HTMLElement): void {
   for (const el of root.querySelectorAll('*')) {

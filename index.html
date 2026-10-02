@@ -7,11 +7,51 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="description" content="A modern web frontend for aria2-next" />
-    <meta name="theme-color" content="#6750a4" />
+    <!--
+      Browser chrome colour, per scheme.
+
+      Two media-scoped tags rather than one, so the address bar / notch already
+      matches on the very first painted frame — before any JavaScript has run.
+      Once the app boots, `syncThemeColor()` in src/ui/mdui/theme.ts rewrites
+      every `meta[name="theme-color"]` from the resolved `--mdui-color-surface`
+      token, which follows any custom dynamic palette; only the tag whose media
+      query currently matches is the one the browser uses, so writing both is
+      correct.
+
+      The values are the MD3 baseline `surface` tones for light and dark.
+    -->
+    <meta name="theme-color" content="#fef7ff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1c1b1f" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="alternate icon" href="./favicon.ico" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
+    <!--
+      Icon webfont fallback.
+
+      Icons are normally inline SVG from `@mdui/icons` — no network, no FOUC, works
+      offline and from `file://`. But mdui's own `icon` API (and anything that
+      reaches for a name outside the imported set) renders
+      `<mdui-icon name="…">`, which is a **font ligature**: without this stylesheet
+      the name is displayed as literal text, e.g. "play-arrow" instead of a glyph.
+      Loading the webfont turns that fallback path into a real icon instead of a
+      word.
+
+      Loaded non-render-blocking (`media="print"` + `onload` swap, with a
+      `<noscript>` copy): the app is fully usable without it, so a slow or blocked
+      CDN must never delay first paint. See src/ui/mdui/icons.ts.
+    -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    </noscript>
     <title>AriaNg Next</title>
     <style>
       /* Hide mdui components until their definitions are registered (no FOUC). */

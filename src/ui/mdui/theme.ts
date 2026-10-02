@@ -130,19 +130,30 @@ export function getTheme(): ResolvedTheme {
  * Keep `<meta name="theme-color">` in step with the scheme.
  *
  * The value is read from the resolved MD3 surface token rather than a literal,
- * so the browser chrome always matches the active theme. `data-scheme` is always
- * recorded so callers (and tests) can observe what was resolved even when the
- * token is not available — e.g. in jsdom, where `mdui.css` is not applied.
+ * so the browser chrome always matches the active theme — including a custom
+ * dynamic palette installed by {@link setColorScheme}.
+ *
+ * `index.html` ships **two** media-scoped tags (one per scheme) so the very first
+ * painted frame is already right, before any JavaScript runs. Every matching tag
+ * is rewritten here: only the one whose `media` query currently applies is the one
+ * the browser honours, so updating both is correct and keeps the tags in sync with
+ * whatever the active scheme turns out to be.
+ *
+ * `data-scheme` is always recorded so callers (and tests) can observe what was
+ * resolved even when the token is not available — e.g. in jsdom, where `mdui.css`
+ * is not applied.
  */
 function syncThemeColor(resolved: ResolvedTheme): void {
   if (typeof document === 'undefined') return;
-  const meta = document.querySelector<HTMLMetaElement>(THEME_COLOR_META_SELECTOR);
-  if (!meta) return;
-  meta.setAttribute('data-scheme', resolved);
+  const metas = document.querySelectorAll<HTMLMetaElement>(THEME_COLOR_META_SELECTOR);
+  if (metas.length === 0) return;
   const surface = getComputedStyle(document.documentElement)
     .getPropertyValue('--mdui-color-surface')
     .trim();
-  if (surface) meta.content = `rgb(${surface})`;
+  for (const meta of metas) {
+    meta.setAttribute('data-scheme', resolved);
+    if (surface) meta.content = `rgb(${surface})`;
+  }
 }
 
 function emitThemeChange(setting: ThemeSetting, resolved: ResolvedTheme): void {
@@ -160,6 +171,12 @@ function emitThemeChange(setting: ThemeSetting, resolved: ResolvedTheme): void {
  * Pass `'system'` to follow the OS: mdui's `mdui-theme-auto` class plus the
  * live media-query subscription installed by {@link onThemeChange} keeps
  * everything (including ECharts) in sync when the OS flips.
+ *
+ * This is the **single write path**, so it also emits `themechange` itself.
+ * Without that, a change made from Settings → AriaNg → Global would restyle the
+ * mdui components but leave every token-driven consumer — the speed chart, the
+ * piece map — reading the old colours, because those re-read the MD3 tokens only
+ * when the event fires.
  */
 export function setTheme(setting: ThemeSetting): void {
   try {
@@ -168,6 +185,14 @@ export function setTheme(setting: ThemeSetting): void {
     console.warn('[mdui] setTheme failed', error);
   }
   syncThemeColor(resolveTheme(setting));
+  emitThemeChange(setting, resolveTheme(setting));
+  for (const listener of listeners) {
+    try {
+      listener(resolveTheme(setting));
+    } catch (error) {
+      console.warn('[mdui] themechange listener failed', error);
+    }
+  }
 }
 
 /* -------------------------------------------------------------------------- */

@@ -43,7 +43,12 @@ export const APP_CONSTANTS = {
 export const DEFAULT_SETTINGS: AriaNgSettings = Object.freeze<AriaNgSettings>({
   /* general */
   language: APP_CONSTANTS.defaultLanguage,
-  theme: 'light',
+  // AriaNg defaults to `light`; mdui/MD3 convention is to follow the OS. Since
+  // mdui resolves `mdui-theme-auto` through `prefers-color-scheme` on its own,
+  // this needs no JS and gives a dark UI immediately on a dark system — which is
+  // what "no dark mode" was actually about. Settings → AriaNg → Global still
+  // offers Light / Dark / Follow system.
+  theme: 'system',
   title: '${downspeed}, ${upspeed} - ${title}',
   titleRefreshInterval: 5000,
   browserNotification: false,

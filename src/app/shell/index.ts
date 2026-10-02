@@ -32,4 +32,5 @@ export { activateRpcProfile, RpcProfileSwitcher } from './RpcProfileSwitcher';
 export { SnackbarHost } from './SnackbarHost';
 export { StatusBar } from './StatusBar';
 export { StorageBrokenOverlay } from './StorageBrokenOverlay';
+export { ThemeSwitcher } from './ThemeSwitcher';
 export { ARIANG_PROJECT_URL, DISPLAY_ORDERS, FOCUS_SEARCH_EVENT, TopToolbar } from './TopToolbar';

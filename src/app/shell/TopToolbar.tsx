@@ -34,6 +34,7 @@ import { useSettingsStore } from '@/store/settings';
 import { filterTasks, useTasksStore } from '@/store/tasks';
 import { useUiStore } from '@/store/ui';
 import { MduiButton, MduiDropdown, MduiIconButton, MduiMenu, MduiMenuItem, MduiTextField } from '@/ui/mdui';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 /** Where the "Help" button points — AriaNg's own project page. */
 export const ARIANG_PROJECT_URL = 'https://github.com/mayswind/AriaNg';
@@ -249,6 +250,7 @@ export function TopToolbar() {
         </div>
       )}
 
+      <ThemeSwitcher />
       <RpcProfileSwitcher />
     </mdui-top-app-bar>
   );

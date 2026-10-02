@@ -121,16 +121,15 @@ export function MduiIcon({ name, size = '1.5rem', slot, className, style }: Mdui
  * `mdui-list-item` additionally sniffs the child with `isNodeName(el, 'mdui-icon')`,
  * so the `@mdui/icons` elements are recognised as icons there too.
  *
- * Returns `null` for an unknown name rather than falling back to the font, so a
- * typo shows nothing instead of stray words; callers use `MduiIcon` directly for
- * icons that live outside a component slot.
+ * Returns `null` only for a missing name. An **unregistered** name falls back to
+ * the font-based `<mdui-icon name>`, which `index.html` loads from Google Fonts
+ * as a network resource — so a name outside the imported set renders as a real
+ * glyph rather than the literal word, and rather than an empty slot.
  */
 function slotIcon(name: string | undefined, slot?: string, size?: string): ReactNode {
-  if (!name || !hasIcon(name)) return null;
-  return createElement(icon(name), {
-    ...(slot ? { slot } : {}),
-    style: size ? { fontSize: size } : undefined,
-  });
+  if (!name) return null;
+  const props = { ...(slot ? { slot } : {}), style: size ? { fontSize: size } : undefined };
+  return hasIcon(name) ? createElement(icon(name), props) : createElement('mdui-icon', { ...props, name });
 }
 
 /* -------------------------------------------------------------------------- */

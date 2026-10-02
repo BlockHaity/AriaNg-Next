@@ -68,6 +68,7 @@ import '@mdui/icons/dns.js';
 import '@mdui/icons/language.js';
 import '@mdui/icons/light-mode.js';
 import '@mdui/icons/dark-mode.js';
+import '@mdui/icons/contrast.js';
 import '@mdui/icons/tune.js';
 import '@mdui/icons/filter-list.js';
 import '@mdui/icons/sort.js';
@@ -190,6 +191,7 @@ const ICON_NAMES = [
   'tune',
   'dark-mode',
   'light-mode',
+  'contrast',
   'language',
   'dns',
   'terminal',
