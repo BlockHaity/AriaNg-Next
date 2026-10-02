@@ -1,0 +1,656 @@
+/**
+ * Task detail page styles.
+ *
+ * Only MD3 tokens (`--mdui-color-*`, `--mdui-typescale-*`, `--mdui-shape-*`)
+ * are used — no colour literal appears anywhere in this file, so light mode,
+ * dark mode and the dynamic scheme all follow for free.
+ *
+ * Scope: every rule is prefixed `ariang-task-detail` (or a shared `ariang-`
+ * widget class), because this stylesheet is imported by the lazily-loaded route
+ * chunk and must not leak into the task list.
+ */
+
+/* ------------------------------------------------------------------ */
+/* page shell                                                         */
+/* ------------------------------------------------------------------ */
+
+.ariang-task-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0 1.5rem;
+  color: rgb(var(--mdui-color-on-surface));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+  line-height: var(--mdui-typescale-body-medium-line-height);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ------------------------------------------------------------------ */
+/* tabs (MD3 "primary tabs")                                           */
+/* ------------------------------------------------------------------ */
+
+.ariang-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.ariang-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  /* MD3: 48dp minimum tap target. */
+  min-height: 48px;
+  min-width: 90px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: var(--mdui-shape-corner-full);
+  background: transparent;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+  cursor: pointer;
+}
+
+.ariang-tab:hover {
+  background: rgb(var(--mdui-color-surface-container-low));
+}
+
+.ariang-tab:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: -3px;
+}
+
+.ariang-tab[aria-selected='true'] {
+  color: rgb(var(--mdui-color-on-secondary-container));
+  background: rgb(var(--mdui-color-secondary-container));
+}
+
+.ariang-tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 1rem;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: rgb(var(--mdui-color-primary));
+}
+
+.ariang-tabpanel {
+  display: block;
+}
+
+.ariang-tabpanel:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* settings / overview table                                          */
+/* ------------------------------------------------------------------ */
+
+.ariang-settings-table {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--mdui-shape-corner-medium);
+  overflow: hidden;
+  border: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.ariang-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  min-height: 48px;
+  padding: 0.375rem 0.75rem;
+  background: rgb(var(--mdui-color-surface));
+}
+
+.ariang-settings-row:nth-child(even) {
+  background: rgb(var(--mdui-color-surface-container-lowest));
+}
+
+.ariang-settings-row:hover {
+  background: rgb(var(--mdui-color-surface-container-low));
+}
+
+.ariang-setting-key {
+  flex: 0 0 22%;
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-large-font-family);
+  font-size: var(--mdui-typescale-label-large-size);
+}
+
+.ariang-setting-value {
+  flex: 1 1 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: rgb(var(--mdui-color-on-surface));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+.ariang-setting-key-description {
+  color: rgb(var(--mdui-color-outline));
+  font-style: normal;
+  font-size: var(--mdui-typescale-label-medium-size);
+}
+
+.ariang-word-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ariang-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ariang-mono {
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ariang-inline-link {
+  color: rgb(var(--mdui-color-primary));
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  min-height: 32px;
+}
+
+.ariang-inline-link:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* task tables (file list, peer list)                                  */
+/* ------------------------------------------------------------------ */
+
+.ariang-task-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(var(--mdui-color-outline-variant));
+  border-radius: var(--mdui-shape-corner-medium);
+  overflow: hidden;
+}
+
+.ariang-task-table-head,
+.ariang-task-table-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  min-height: 48px;
+}
+
+.ariang-task-table-head {
+  background: rgb(var(--mdui-color-surface-container-high));
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+}
+
+.ariang-task-table-row {
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.ariang-task-table-row:last-child {
+  border-bottom: none;
+}
+
+.ariang-task-table-row:hover {
+  background: rgb(var(--mdui-color-surface-container-low));
+}
+
+.ariang-task-table-row[data-selected='true'] {
+  background: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+}
+
+.ariang-cell-name {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.ariang-cell-progress {
+  flex: 0 0 30%;
+  min-width: 96px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ariang-cell-size {
+  flex: 0 0 16%;
+  min-width: 88px;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.ariang-cell-peer-status {
+  flex: 0 0 34%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.ariang-cell-peer-speed {
+  flex: 0 0 28%;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.ariang-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 48px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ariang-sort-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ariang-sort-button:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+.ariang-sort-indicator {
+  font-size: var(--mdui-typescale-label-small-size);
+  color: rgb(var(--mdui-color-primary));
+}
+
+.ariang-text-end {
+  text-align: end;
+}
+
+.ariang-empty-state {
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.ariang-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ariang-dir-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  border-radius: var(--mdui-shape-corner-full);
+  background: none;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  cursor: pointer;
+}
+
+.ariang-dir-toggle:hover {
+  background: rgb(var(--mdui-color-surface-container-high));
+}
+
+.ariang-dir-toggle:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* choose-files toolbar                                               */
+/* ------------------------------------------------------------------ */
+
+.ariang-choose-files-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  background: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.ariang-split-button {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.ariang-split-button > *:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.ariang-split-button > *:last-child {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  min-width: 40px;
+}
+
+/* ------------------------------------------------------------------ */
+/* piece map / legend                                                 */
+/* ------------------------------------------------------------------ */
+
+.ariang-piece-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.ariang-piece-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 32px;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-large-font-family);
+  font-size: var(--mdui-typescale-label-large-size);
+}
+
+.ariang-piece-map {
+  display: block;
+  padding: 4px 2px;
+  border-radius: var(--mdui-shape-corner-small);
+  background: rgb(var(--mdui-color-surface));
+  overflow-x: auto;
+}
+
+.ariang-piece {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 1px;
+  background: rgb(var(--mdui-color-surface-container-highest));
+  border-radius: 1px;
+}
+
+.ariang-piece-completed {
+  background: rgb(var(--mdui-color-primary));
+}
+
+.ariang-piece-canvas {
+  display: block;
+}
+
+.ariang-piece-bar-wrapper {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 14px;
+}
+
+.ariang-piece-bar-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--mdui-shape-corner-full);
+}
+
+/* ------------------------------------------------------------------ */
+/* context menu                                                       */
+/* ------------------------------------------------------------------ */
+
+.ariang-context-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 180px;
+  padding: 0.5rem;
+  border-radius: var(--mdui-shape-corner-extra-small);
+  background: rgb(var(--mdui-color-surface-container-high));
+  color: rgb(var(--mdui-color-on-surface));
+  box-shadow: var(--mdui-elevation-level2);
+}
+
+.ariang-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 0.5rem;
+  border: none;
+  border-radius: var(--mdui-shape-corner-extra-small);
+  background: none;
+  color: inherit;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+  text-align: start;
+  cursor: pointer;
+}
+
+.ariang-context-menu-item:hover {
+  background: rgb(var(--mdui-color-surface-container-highest));
+}
+
+.ariang-context-menu-item:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: -3px;
+}
+
+.ariang-context-menu-check {
+  margin-inline-start: auto;
+  color: rgb(var(--mdui-color-primary));
+}
+
+/* ------------------------------------------------------------------ */
+/* health meter                                                       */
+/* ------------------------------------------------------------------ */
+
+.ariang-health-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 160px;
+}
+
+.ariang-health-meter-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: var(--mdui-shape-corner-full);
+  background: rgb(var(--mdui-color-surface-container-highest));
+  overflow: hidden;
+}
+
+.ariang-health-meter-fill {
+  height: 100%;
+  border-radius: var(--mdui-shape-corner-full);
+  background: rgb(var(--mdui-color-primary));
+}
+
+.ariang-health-meter-label {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* speed chart                                                        */
+/* ------------------------------------------------------------------ */
+
+.ariang-chart-wrapper {
+  width: 100%;
+  min-height: 120px;
+}
+
+.ariang-chart-no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* ------------------------------------------------------------------ */
+/* media tab                                                          */
+/* ------------------------------------------------------------------ */
+
+.ariang-media-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ariang-media-live-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background: rgb(var(--mdui-color-error));
+  color: rgb(var(--mdui-color-on-error));
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+  letter-spacing: 0.08em;
+}
+
+.ariang-media-absolute {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.ariang-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ariang-track-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--mdui-shape-corner-small);
+}
+
+.ariang-track-row[data-selected='true'] {
+  background: rgb(var(--mdui-color-surface-container-high));
+}
+
+.ariang-track-meta {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+}
+
+.ariang-helper-text {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+/* ------------------------------------------------------------------ */
+/* option rows                                                        */
+/* ------------------------------------------------------------------ */
+
+.ariang-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-height: 56px;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.ariang-option-row:last-child {
+  border-bottom: none;
+}
+
+.ariang-option-key {
+  flex: 0 0 30%;
+  min-width: 180px;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-large-font-family);
+  font-size: var(--mdui-typescale-label-large-size);
+}
+
+.ariang-option-control {
+  flex: 1 1 240px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ariang-option-status {
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+  color: rgb(var(--mdui-color-primary));
+}
+
+.ariang-option-status[data-tone='error'] {
+  color: rgb(var(--mdui-color-error));
+}
+
+.ariang-option-global-value {
+  color: rgb(var(--mdui-color-outline));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ariang-warning-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--mdui-shape-corner-medium);
+  background: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+/* ------------------------------------------------------------------ */
+/* small screens                                                      */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 720px) {
+  .ariang-setting-key,
+  .ariang-option-key {
+    flex-basis: 100%;
+  }
+
+  .ariang-cell-progress,
+  .ariang-cell-size {
+    flex-basis: 40%;
+  }
+}

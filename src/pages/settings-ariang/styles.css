@@ -1,0 +1,370 @@
+/**
+ * `/settings/ariang` styles — AriaNg's `.nav-tabs-custom` (a horizontal tab
+ * strip above a single settings table) rebuilt on MD3 tokens.
+ *
+ * Only `--mdui-color-*` / `--mdui-typescale-*` / `--mdui-shape-*` appear here;
+ * no literal colour is used, so light and dark both stay correct.
+ */
+
+.settings-ariang {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  min-width: 0;
+}
+
+/* ---- notice (info / warning strip) ------------------------------------ */
+
+.settings-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+  font: var(--mdui-typescale-body-medium-font);
+}
+
+.settings-notice[data-tone='error'] {
+  background-color: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+.settings-notice__dismiss {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+/* ---- tab strip --------------------------------------------------------- */
+
+.settings-tabs {
+  background-color: rgb(var(--mdui-color-surface-container));
+  border-radius: var(--mdui-shape-corner-extra-large);
+}
+
+.settings-tabs [slot='tab'] {
+  min-height: 48px;
+}
+
+/* The trailing "+" tab: icon only, no label, no min-width. */
+.settings-tab--add {
+  min-width: 48px;
+}
+
+/* Tab label + the × close button of a non-default RPC profile. */
+.settings-tab__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.settings-tab__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--mdui-shape-corner-full);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.settings-tab__close:hover {
+  background-color: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+.settings-tab__close:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+/* ---- panels ------------------------------------------------------------ */
+
+.settings-ariang [slot='panel'] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem 1rem;
+}
+
+/* ---- section cards ----------------------------------------------------- */
+
+.settings-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-section__headline {
+  margin: 0;
+  padding: 1rem 1rem 0.25rem;
+  font: var(--mdui-typescale-title-medium-font);
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+.settings-section__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- a single row ------------------------------------------------------ */
+
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 720px) {
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.settings-row__key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  min-width: 0;
+}
+
+.settings-row__label {
+  font: var(--mdui-typescale-title-small-font);
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+.settings-row__help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: var(--mdui-shape-corner-full);
+  background: transparent;
+  color: rgb(var(--mdui-color-primary));
+  cursor: pointer;
+}
+
+.settings-row__help:hover {
+  background-color: rgb(var(--mdui-color-primary-container));
+  color: rgb(var(--mdui-color-on-primary-container));
+}
+
+.settings-row__help:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+.settings-row__value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.settings-row__value > * {
+  min-width: 0;
+}
+
+.settings-row__value--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.settings-row__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The `*` marker AriaNg put next to a "needs a reload" row. */
+.settings-row__asterisk {
+  color: rgb(var(--mdui-color-error));
+}
+
+/* ---- interval / select helpers ----------------------------------------- */
+
+.settings-row__hint {
+  font: var(--mdui-typescale-body-small-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.settings-row__hint--error {
+  color: rgb(var(--mdui-color-error));
+}
+
+/* ---- page title editor ------------------------------------------------- */
+
+.title-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.title-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title-editor-row > *:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-preview {
+  margin: 0;
+  font: var(--mdui-typescale-body-small-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+  overflow-wrap: anywhere;
+}
+
+/* ---- placeholder help popover ------------------------------------------ */
+
+.placeholder-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  white-space: nowrap;
+}
+
+.placeholder-row code {
+  font-family: var(--mdui-typescale-body-small-font-family);
+}
+
+/* ---- RPC address composite --------------------------------------------- */
+
+.rpc-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.rpc-address__host {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.rpc-address__port {
+  flex: 0 0 7rem;
+}
+
+.rpc-address__interface {
+  flex: 0 0 10rem;
+}
+
+.rpc-address__separator {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font: var(--mdui-typescale-body-large-font);
+}
+
+/* ---- secret field ------------------------------------------------------ */
+
+.secret-field {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.secret-field > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---- tips / footer row ------------------------------------------------- */
+
+.settings-tips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font: var(--mdui-typescale-body-small-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.settings-tips__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
+
+/* ---- import / export dialogs ------------------------------------------ */
+
+.settings-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.settings-dialog__body > * {
+  width: 100%;
+}
+
+.settings-dialog__error {
+  margin: 0;
+  color: rgb(var(--mdui-color-error));
+  font: var(--mdui-typescale-body-small-font);
+}
+
+.settings-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-dialog__copied {
+  font: var(--mdui-typescale-label-large-font);
+  color: rgb(var(--mdui-color-primary));
+}
+
+.settings-dialog__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-dialog__hint {
+  font: var(--mdui-typescale-body-small-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* The read-only export payload: a plain textarea so `readonly` is real. */
+.settings-dialog__textarea {
+  width: 100%;
+  min-height: 20rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(var(--mdui-color-outline));
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-surface-container-lowest));
+  color: rgb(var(--mdui-color-on-surface));
+  font: var(--mdui-typescale-body-small-font);
+  font-family: var(--mdui-typescale-body-small-font-family);
+  resize: vertical;
+}
+
+.settings-dialog__textarea:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}

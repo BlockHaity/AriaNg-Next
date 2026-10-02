@@ -1,0 +1,285 @@
+/**
+ * Styles for the `/debug` page.
+ *
+ * Only structure and MD3 tokens — no colour literal appears here. Level colours
+ * resolve through `--mdui-color-*` roles chosen by the `data-level` attribute
+ * that `LatestLogsTab` puts on each pill, so light and dark stay correct for
+ * free.
+ */
+
+/* ------------------------------------------------------------------ */
+/* page shell                                                          */
+/* ------------------------------------------------------------------ */
+
+.ariang-debug-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  /* A horizontal swipe must never fight the vertical scroll of the log list. */
+  touch-action: pan-y;
+}
+
+/* ------------------------------------------------------------------ */
+/* the settings-table grid (AriaNg's `settings-table` rows)            */
+/* ------------------------------------------------------------------ */
+
+.ariang-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) minmax(0, 2fr);
+  column-gap: 1rem;
+  row-gap: 0.75rem;
+  align-items: start;
+  padding: 1rem;
+}
+
+/* A single-column variant for the rows that carry no label. */
+.ariang-settings-grid--stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ariang-setting-key {
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+  line-height: var(--mdui-typescale-title-small-line-height);
+  font-weight: var(--mdui-typescale-title-small-font-weight);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.ariang-setting-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+  line-height: var(--mdui-typescale-body-medium-line-height);
+}
+
+/* A label-less row, e.g. the Execute button. */
+.ariang-setting-value--full {
+  grid-column: 1 / -1;
+}
+
+/* ------------------------------------------------------------------ */
+/* logs toolbar + list                                                 */
+/* ------------------------------------------------------------------ */
+
+.ariang-logs-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.ariang-logs-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* A plain control, not a link: it changes a session-only view state. */
+  background: none;
+  border: 0;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--mdui-shape-corner-small);
+  color: rgb(var(--mdui-color-primary));
+  font: inherit;
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+  cursor: pointer;
+}
+
+.ariang-logs-sort:hover {
+  background: rgb(var(--mdui-color-primary-container));
+}
+
+.ariang-logs-sort:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+.ariang-logs-sort[data-order='time:asc'] .ariang-logs-sort-order::after {
+  content: '\2191';
+}
+
+.ariang-logs-sort[data-order='time:desc'] .ariang-logs-sort-order::after {
+  content: '\2193';
+}
+
+.ariang-logs-sort-order {
+  font-size: var(--mdui-typescale-title-small-size);
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.ariang-logs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The "Auto Refresh: 1 Second" divider between the options and Refresh Now. */
+.ariang-logs-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.5rem;
+  background: rgb(var(--mdui-color-outline-variant));
+}
+
+.ariang-logs-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+/* Zebra striping, AriaNg's `striped`. */
+.ariang-log-row:nth-child(even) {
+  background: rgb(var(--mdui-color-surface-container-low));
+}
+
+.ariang-log-row:hover {
+  background: rgb(var(--mdui-color-surface-container-high));
+}
+
+.ariang-log-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+  line-height: var(--mdui-typescale-body-small-line-height);
+}
+
+.ariang-log-row:focus-within {
+  background: rgb(var(--mdui-color-secondary-container));
+}
+
+.ariang-log-id {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-variant-numeric: tabular-nums;
+}
+
+.ariang-log-time {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-variant-numeric: tabular-nums;
+}
+
+.ariang-log-content {
+  flex: 1 1 20rem;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ariang-log-detail-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: rgb(var(--mdui-color-primary));
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.ariang-log-detail-link:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* level pills — the colour comes from the token table only            */
+/* ------------------------------------------------------------------ */
+
+.ariang-level-pill {
+  border-radius: var(--mdui-shape-corner-small);
+  padding: 0.1rem 0.5rem;
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+  line-height: var(--mdui-typescale-label-medium-line-height);
+  white-space: nowrap;
+}
+
+.ariang-level-pill[data-level='DEBUG'] {
+  background: rgb(var(--mdui-color-surface-variant));
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.ariang-level-pill[data-level='INFO'] {
+  background: rgb(var(--mdui-color-primary-container));
+  color: rgb(var(--mdui-color-on-primary-container));
+}
+
+.ariang-level-pill[data-level='WARN'] {
+  background: rgb(var(--mdui-color-tertiary-container));
+  color: rgb(var(--mdui-color-on-tertiary-container));
+}
+
+.ariang-level-pill[data-level='ERROR'] {
+  background: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+/* ------------------------------------------------------------------ */
+/* RPC debug                                                           */
+/* ------------------------------------------------------------------ */
+
+.ariang-rpc-response mdui-text-field {
+  width: 100%;
+}
+
+/* The raw request envelope, so it can be copied into a bug report. */
+.ariang-rpc-request {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+  background: rgb(var(--mdui-color-surface-container-low));
+  color: rgb(var(--mdui-color-on-surface));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ariang-rpc-error {
+  color: rgb(var(--mdui-color-error));
+}
+
+/* ------------------------------------------------------------------ */
+/* log detail dialog                                                   */
+/* ------------------------------------------------------------------ */
+
+.ariang-log-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.ariang-log-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0 1rem;
+}
+
+.ariang-log-detail pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+  background: rgb(var(--mdui-color-surface-container-low));
+  border-radius: var(--mdui-shape-corner-small);
+  color: rgb(var(--mdui-color-on-surface));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

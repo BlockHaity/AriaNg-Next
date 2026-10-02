@@ -1,0 +1,165 @@
+/**
+ * New-task page styles — `views/new.html`'s `nav-tabs-custom` layout rebuilt on
+ * MD3 tokens.
+ *
+ * Only `--mdui-color-*` / `--mdui-typescale-*` / `--mdui-shape-*` are used.
+ * Every interactive element keeps a ≥48dp tap target and a visible focus ring.
+ */
+
+.new-task {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* ---- toolbar: tabs on the left, the three action groups on the right ---- */
+
+.new-task-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.new-task-toolbar__tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.new-task-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+}
+
+/* The caret that opens the "Download Later / Export Command API" menu. */
+.new-task-toolbar__more {
+  display: inline-flex;
+}
+
+.new-task-toolbar__more mdui-button-icon {
+  margin-left: -8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* ---- links tab --------------------------------------------------------- */
+
+.new-task-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem 1.5rem;
+}
+
+.new-task-links__title {
+  margin: 0;
+  font: var(--mdui-typescale-title-small-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.new-task-links__field {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.new-task-links__field > * {
+  min-width: 0;
+}
+
+/* AriaNg's `form-control-feedback` glyph. */
+.new-task-links__feedback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 48px;
+  min-height: 48px;
+  margin-top: 0.5rem;
+}
+
+.new-task-links__feedback--ok {
+  color: rgb(var(--mdui-color-primary));
+}
+
+.new-task-links__feedback--error {
+  color: rgb(var(--mdui-color-error));
+}
+
+.new-task-links__shortcut {
+  display: none;
+}
+
+/* ---- options tab ------------------------------------------------------- */
+
+.new-task-options {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-bottom: 1.5rem;
+}
+
+.new-task-options__media-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.new-task-options__list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.new-task-options__empty {
+  padding: 1rem;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font: var(--mdui-typescale-body-medium-font);
+}
+
+/* ---- filter chips ------------------------------------------------------ */
+
+.option-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: var(--mdui-shape-corner-medium);
+  background-color: rgb(var(--mdui-color-surface-container-low));
+}
+
+.option-filters__caption {
+  font: var(--mdui-typescale-label-large-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* ---- export command api dialog ----------------------------------------- */
+
+.export-command-api__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: min(28rem, 80vw);
+}
+
+.export-command-api__output {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.export-command-api__copied {
+  align-self: flex-start;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--mdui-shape-corner-extra-small);
+  background-color: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+  font: var(--mdui-typescale-label-small-font);
+}

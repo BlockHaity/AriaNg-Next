@@ -23,6 +23,7 @@
  */
 
 import { flattenTable } from './parser';
+import { ARIA2_NEXT_STRINGS } from './extensions';
 import {
   BUILD_TARGET,
   FALLBACK_LOCALE,
@@ -248,6 +249,20 @@ function createStore(options: CreateI18nOptions): I18nStore {
         }
 
         const flat = flattenTable(table);
+
+        /**
+         * Merge the aria2-next overlay **into English only**.
+         *
+         * AriaNg predates ED2K and native media, so those keys cannot exist in
+         * any of its locale files. Merging them into the English table means
+         * every locale inherits them through the existing English fallback, and
+         * a real translation still wins the moment it exists in `langs/*.txt`
+         * (because that locale is consulted before English).
+         */
+        if (locale === FALLBACK_LOCALE) {
+          Object.assign(flat, ARIA2_NEXT_STRINGS);
+        }
+
         cache.set(locale, flat);
         pending.delete(locale);
         return flat;

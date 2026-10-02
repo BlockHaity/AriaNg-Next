@@ -1,0 +1,607 @@
+/**
+ * ED2K search page styles.
+ *
+ * Scoped under `.ed2k-page` / `.ed2k-grid` / `.ed2k-row` / `.ed2k-detail` /
+ * `.ed2k-form` so nothing here can leak into the task list or the settings page.
+ *
+ * Two rules are load-bearing for this page specifically:
+ *
+ * 1. **mdui has no data table.** The result grid below is a CSS grid whose
+ *    template is declared *once* on `.ed2k-grid__header` and reused verbatim by
+ *    every `.ed2k-row`, so a column can never drift out of alignment with its
+ *    header.
+ * 2. **MD3 tap targets are 48 dp.** Every control in a row is at least 48×48,
+ *    which is why the action column is generously wide and the icon buttons get
+ *    an explicit `min-height`/`min-width` rather than relying on mdui's density.
+ *
+ * Colours are `--mdui-color-*` roles and typography is `--mdui-typescale-*`;
+ * there is no literal colour anywhere in this file.
+ */
+
+/* ------------------------------------------------------------------ */
+/* page scaffolding                                                     */
+/* ------------------------------------------------------------------ */
+
+.ed2k-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+.ed2k-page__title {
+  margin: 0;
+  font-family: var(--mdui-typescale-headline-medium-font-family);
+  font-size: var(--mdui-typescale-headline-medium-size);
+  font-weight: var(--mdui-typescale-headline-medium-weight);
+  line-height: var(--mdui-typescale-headline-medium-line-height);
+}
+
+.ed2k-page__subtitle {
+  margin: 0.25rem 0 0;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+.ed2k-page__checking {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* ---- disabled / unsupported ---- */
+
+.ed2k-page__unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: var(--mdui-shape-corner-extra-large);
+  background-color: rgb(var(--mdui-color-surface-container-high));
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+.ed2k-page__unsupported-title {
+  margin: 0;
+  font-family: var(--mdui-typescale-title-large-font-family);
+  font-size: var(--mdui-typescale-title-large-size);
+  font-weight: var(--mdui-typescale-title-large-weight);
+}
+
+.ed2k-page__unsupported-body {
+  margin: 0;
+  max-width: 46rem;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+.ed2k-page__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  color: rgb(var(--mdui-color-primary));
+  text-decoration: underline;
+}
+
+/* ---- "how it works" panel ---- */
+
+.ed2k-page__how {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--mdui-shape-corner-large);
+  background-color: rgb(var(--mdui-color-surface-container-low));
+}
+
+.ed2k-page__how-title {
+  margin: 0;
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+  font-weight: var(--mdui-typescale-title-small-weight);
+}
+
+.ed2k-page__how-body,
+.ed2k-page__how-share {
+  margin: 0;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ed2k-page__how-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* search form                                                          */
+/* ------------------------------------------------------------------ */
+
+.ed2k-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ed2k-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ed2k-form__keyword {
+  flex: 1 1 20rem;
+  min-width: 16rem;
+}
+
+.ed2k-form__submit,
+.ed2k-form__row mdui-button {
+  /* MD3: every tap target is at least 48dp tall. */
+  min-height: 48px;
+}
+
+.ed2k-form__option {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.ed2k-form__hint {
+  margin: 0 0 0.75rem;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ed2k-form__gid {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ed2k-form__gid-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ed2k-form__gid code {
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-surface-container-highest));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  user-select: all;
+}
+
+/* ------------------------------------------------------------------ */
+/* results table                                                        */
+/* ------------------------------------------------------------------ */
+
+.ed2k-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ed2k-results__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.ed2k-results__title {
+  margin: 0;
+  font-family: var(--mdui-typescale-title-large-font-family);
+  font-size: var(--mdui-typescale-title-large-size);
+  font-weight: var(--mdui-typescale-title-large-weight);
+}
+
+.ed2k-results__count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+.ed2k-results__streaming {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: rgb(var(--mdui-color-primary));
+  /* The spinner is decorative; the count next to it carries the announcement. */
+  animation: ed2k-spin 1.6s linear infinite;
+}
+
+.ed2k-results__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.ed2k-results__toolbar mdui-button,
+.ed2k-results__toolbar mdui-checkbox {
+  min-height: 48px;
+}
+
+.ed2k-results__selected {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+@keyframes ed2k-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- the grid ---- */
+
+.ed2k-grid {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--mdui-shape-corner-large);
+  overflow: hidden;
+  border: 1px solid rgb(var(--mdui-color-outline-variant));
+}
+
+.ed2k-grid__header,
+.ed2k-row {
+  display: grid;
+  grid-template-columns:
+    3rem
+    minmax(0, 1fr)
+    7rem
+    minmax(0, 10rem)
+    minmax(0, 8rem)
+    auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  padding: 0 0.75rem;
+  min-height: 48px;
+}
+
+.ed2k-grid__header {
+  background-color: rgb(var(--mdui-color-surface-container));
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+  font-weight: var(--mdui-typescale-title-small-weight);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.ed2k-row {
+  border-top: 1px solid rgb(var(--mdui-color-outline-variant));
+  background-color: rgb(var(--mdui-color-surface));
+}
+
+.ed2k-row:hover {
+  background-color: rgb(var(--mdui-color-surface-container-low));
+}
+
+.ed2k-grid__cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 48px;
+}
+
+.ed2k-grid__cell--sortable {
+  padding: 0;
+}
+
+.ed2k-grid__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 0.25rem;
+  border: none;
+  border-radius: var(--mdui-shape-corner-small);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ed2k-grid__sort:hover {
+  background-color: rgb(var(--mdui-color-on-surface));
+  opacity: 0.08;
+}
+
+/* Focus must stay visible: the sort button is the only keyboard-reachable part
+   of the header. */
+.ed2k-grid__sort:focus-visible {
+  outline: 3px solid rgb(var(--mdui-color-primary));
+  outline-offset: -3px;
+}
+
+.ed2k-row__cell--size {
+  justify-content: flex-end;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.ed2k-row__cell--network,
+.ed2k-row__cell--codec,
+.ed2k-row__cell--size {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ed2k-row__cell--name {
+  gap: 0.5rem;
+}
+
+.ed2k-row__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+}
+
+.ed2k-row__name {
+  flex: 1 1 auto;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+/* "N sources" — the ED2K-specific bit of row metadata. */
+.ed2k-row__sources {
+  flex: 0 0 auto;
+  min-width: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: var(--mdui-shape-corner-full);
+  background-color: rgb(var(--mdui-color-tertiary-container));
+  color: rgb(var(--mdui-color-on-tertiary-container));
+  font-family: var(--mdui-typescale-label-small-font-family);
+  font-size: var(--mdui-typescale-label-small-size);
+  text-align: center;
+}
+
+.ed2k-row__cell--actions {
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+.ed2k-row__cell--actions mdui-button,
+.ed2k-row__cell--actions mdui-button-icon {
+  min-height: 48px;
+}
+
+/* ---- states ---- */
+
+.ed2k-results__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--mdui-shape-corner-medium);
+  background-color: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+.ed2k-results__error-title {
+  margin: 0;
+  font-family: var(--mdui-typescale-title-small-font-family);
+  font-size: var(--mdui-typescale-title-small-size);
+  font-weight: var(--mdui-typescale-title-small-weight);
+}
+
+.ed2k-results__error-body {
+  margin: 0.25rem 0 0;
+}
+
+.ed2k-results__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 3rem 1rem;
+  border-radius: var(--mdui-shape-corner-large);
+  background-color: rgb(var(--mdui-color-surface-container-low));
+  color: rgb(var(--mdui-color-on-surface-variant));
+  text-align: center;
+}
+
+.ed2k-results__empty-title {
+  margin: 0.5rem 0 0;
+  color: rgb(var(--mdui-color-on-surface));
+  font-family: var(--mdui-typescale-title-medium-font-family);
+  font-size: var(--mdui-typescale-title-medium-size);
+  font-weight: var(--mdui-typescale-title-medium-weight);
+}
+
+.ed2k-results__empty-body {
+  margin: 0;
+  max-width: 34rem;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+/* ------------------------------------------------------------------ */
+/* detail dialog                                                        */
+/* ------------------------------------------------------------------ */
+
+.ed2k-detail__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: min(36rem, 80vw);
+}
+
+.ed2k-detail__note {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-surface-container-high));
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+.ed2k-detail__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ed2k-detail__summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--mdui-shape-corner-medium);
+  background-color: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+}
+
+.ed2k-detail__summary-name {
+  flex: 1 1 auto;
+  font-family: var(--mdui-typescale-title-medium-font-family);
+  font-size: var(--mdui-typescale-title-medium-size);
+}
+
+.ed2k-detail__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin: 0;
+}
+
+.ed2k-detail__pair {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.ed2k-detail__pair dt {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+}
+
+.ed2k-detail__pair dd {
+  margin: 0;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+.ed2k-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.ed2k-detail__field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ed2k-detail__label {
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+}
+
+.ed2k-detail__copy {
+  min-height: 48px;
+}
+
+.ed2k-detail__value {
+  overflow-wrap: anywhere;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+.ed2k-detail__value--mono {
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-surface-container-highest));
+  font-family: monospace;
+  font-size: var(--mdui-typescale-body-small-size);
+  user-select: all;
+}
+
+.ed2k-detail__warning {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+}
+
+/* ------------------------------------------------------------------ */
+/* narrow viewports                                                     */
+/* ------------------------------------------------------------------ */
+
+/* Below ~56rem the fixed columns no longer fit, so the grid collapses to two
+   lines per row: identity + size on top, metadata + actions underneath. */
+@media (max-width: 56rem) {
+  .ed2k-grid__header {
+    display: none;
+  }
+
+  .ed2k-row {
+    grid-template-columns: 3rem minmax(0, 1fr) auto;
+    row-gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .ed2k-row__cell--size {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .ed2k-row__cell--network,
+  .ed2k-row__cell--codec {
+    grid-column: 2 / 4;
+  }
+
+  .ed2k-row__cell--actions {
+    grid-column: 2 / 4;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

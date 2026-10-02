@@ -1,0 +1,620 @@
+/**
+ * Task-table styles — AriaNg's `styles/controls/task-table.css` rebuilt on MD3
+ * tokens.
+ *
+ * Rules honoured throughout:
+ *   - **no colour literals.** Every colour is a `var(--mdui-color-*)` role, so
+ *     light/dark/contrast all keep working without a second stylesheet;
+ *   - **no Bootstrap classes.** The column groups are CSS grid tracks, switched at
+ *     AriaNg's own breakpoints (768 / 992 / 1200 px);
+ *   - MD3 state layers on hover / press, a ≥48 dp tap target on every row, and a
+ *     visible focus ring (dragula gave the list none of the three).
+ *
+ * Bootstrap → media query map used here:
+ *   `xs`  <768   `sm` ≥768   `md` ≥992   `lg` ≥1200
+ */
+
+/* ------------------------------------------------------------------ */
+/* the table shell                                                     */
+/* ------------------------------------------------------------------ */
+
+.task-table {
+  --task-row-pad-y: 8px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  /* AriaNg: `margin: 0 15px`, plus the landscape safe-area inset. */
+  margin-left: calc(15px + env(safe-area-inset-left));
+  margin-right: calc(15px + env(safe-area-inset-right));
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+@media screen and (orientation: landscape) {
+  .task-table {
+    margin-right: calc(15px + env(safe-area-inset-right));
+  }
+}
+
+.task-table-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* `draggula`'s `cursor: grab` on the whole list body, now on the rows only so
+   the links inside them stay clickable. */
+.task-table-body--draggable .task-row {
+  cursor: grab;
+}
+
+.task-table-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* MD3 scrolled containers get a thin overlay scrollbar. */
+  scrollbar-width: thin;
+  /* The bottom inset keeps the last row clear of the navigation bar on notches. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.task-table-pad {
+  /* Spacer that stands in for the virtualised rows above / below the window. */
+  flex: none;
+  width: 100%;
+}
+
+.task-table-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* grid templates                                                      */
+/* ------------------------------------------------------------------ */
+
+/* Rows: three groups plus the trailing chevron. `xs` stacks everything. */
+.task-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 64px; /* ≥48dp tap target, compact */
+  padding-top: var(--task-row-pad-y);
+  padding-bottom: var(--task-row-pad-y);
+  border-top: 1px solid rgb(var(--mdui-color-outline-variant));
+  position: relative;
+  cursor: pointer;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* AriaNg: the first row has no top border (`border-top: inherit`). */
+.task-row:first-of-type {
+  border-top: none;
+}
+
+/* MD3 state layer on hover / press. */
+.task-row:hover {
+  background-color: rgb(var(--mdui-color-on-surface) / 0.06);
+}
+
+.task-row:active {
+  background-color: rgb(var(--mdui-color-on-surface) / 0.1);
+}
+
+.task-row--selected,
+.task-row[aria-selected='true'] {
+  background-color: rgb(var(--mdui-color-secondary-container));
+  color: rgb(var(--mdui-color-on-secondary-container));
+}
+
+.task-row--dragging {
+  background-color: rgb(var(--mdui-color-surface-container-highest));
+  box-shadow: var(--mdui-elevation-level2);
+  opacity: 0.95;
+}
+
+/* Focus must stay visible: the row is the primary control on this page. */
+.task-row:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: -2px;
+}
+
+@media (min-width: 768px) {
+  .task-row {
+    grid-template-columns: 7fr 3fr 2fr auto;
+    min-height: 72px; /* comfortable */
+  }
+}
+
+@media (min-width: 992px) {
+  .task-row {
+    grid-template-columns: 8fr 2fr 2fr auto;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* cells                                                               */
+/* ------------------------------------------------------------------ */
+
+.task-cell {
+  min-width: 0;
+  padding-inline: 4px;
+}
+
+/* Below the compact breakpoint AriaNg's group C is `hidden-xs`. */
+.task-cell--speed {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .task-cell--speed {
+    display: block;
+  }
+}
+
+/* The chevron is `visible-md visible-lg` in AriaNg's markup; MD3 window classes
+   put the "large" breakpoint at 1200 px, which is where it is shown here. */
+.task-cell--chevron {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .task-cell--chevron {
+    display: block;
+  }
+}
+
+.task-cell--main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.task-cell--progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.task-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--mdui-typescale-label-small-font-family);
+  font-size: var(--mdui-typescale-label-small-size);
+  line-height: var(--mdui-typescale-label-small-line-height);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* AriaNg's `.pull-right`: the speed and the peer count sit at the right edge. */
+.task-seeders,
+.task-download-speed--compact {
+  margin-left: auto;
+}
+
+.task-cell--speed .task-download-speed {
+  display: block;
+  font-family: var(--mdui-typescale-label-small-font-family);
+  font-size: var(--mdui-typescale-label-small-size);
+  color: rgb(var(--mdui-color-on-surface-variant));
+  white-space: nowrap;
+}
+
+/* The compact inline speed only exists below the compact breakpoint — above it
+   the dedicated group C column is visible and would duplicate the number. */
+.task-download-speed--compact {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .task-download-speed--compact {
+    display: inline;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* name / size / markers                                               */
+/* ------------------------------------------------------------------ */
+
+.task-name {
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+  line-height: var(--mdui-typescale-body-medium-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.task-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mdui-typescale-body-small-font-family);
+  font-size: var(--mdui-typescale-body-small-size);
+  line-height: var(--mdui-typescale-body-small-line-height);
+  color: rgb(var(--mdui-color-on-surface-variant));
+  min-width: 0;
+}
+
+.task-files a,
+.task-retry-link {
+  color: rgb(var(--mdui-color-primary));
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.task-files a:hover,
+.task-retry-link:hover {
+  text-decoration: underline;
+}
+
+.task-files a:focus-visible,
+.task-retry-link:focus-visible,
+.task-right-arrow:focus-visible,
+.task-drag-handle:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+  border-radius: var(--mdui-shape-corner-extra-small);
+}
+
+.task-marker {
+  display: inline-flex;
+  align-items: center;
+}
+
+.task-marker--error {
+  color: rgb(var(--mdui-color-error));
+}
+
+.task-marker--seeder {
+  color: rgb(var(--mdui-color-tertiary));
+}
+
+.task-media-chip,
+.task-ed2k-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: var(--mdui-shape-corner-small);
+  background-color: rgb(var(--mdui-color-surface-container-high));
+  color: rgb(var(--mdui-color-on-surface-variant));
+  font-family: var(--mdui-typescale-label-small-font-family);
+  font-size: var(--mdui-typescale-label-small-size);
+  white-space: nowrap;
+}
+
+.task-media-chip--warning {
+  background-color: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+.task-ed2k-chip {
+  background-color: rgb(var(--mdui-color-tertiary-container));
+  color: rgb(var(--mdui-color-on-tertiary-container));
+}
+
+/* ------------------------------------------------------------------ */
+/* checkbox                                                            */
+/* ------------------------------------------------------------------ */
+
+/* AriaNg's `.checkbox-hide`: the box appears on hover or while selected, so the
+   default list reads as a list of names rather than a list of checkboxes. */
+.task-checkbox {
+  pointer-events: none;
+}
+
+.task-checkbox--hidden {
+  visibility: hidden;
+}
+
+.task-row:hover .task-checkbox--hidden,
+.task-row:focus-within .task-checkbox--hidden,
+.task-row[aria-selected='true'] .task-checkbox--hidden {
+  visibility: visible;
+}
+
+.task-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 40px;
+  flex: none;
+  border: none;
+  border-radius: var(--mdui-shape-corner-full);
+  background: none;
+  color: rgb(var(--mdui-color-on-surface-variant));
+  cursor: grab;
+  touch-action: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* progress                                                            */
+/* ------------------------------------------------------------------ */
+
+.task-progress {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  border-radius: var(--mdui-shape-corner-extra-small);
+  background-color: rgb(var(--mdui-color-surface-container-highest));
+  overflow: hidden;
+}
+
+.task-progress-bar {
+  height: 100%;
+  /* MD3 determinate indicator: no animation on a value that ticks every second. */
+  background-color: rgb(var(--mdui-color-primary));
+  transition: width 200ms linear;
+}
+
+/* AriaNg's `progress-bar-warning` — an errored row is the MD3 error container. */
+.task-progress-bar--error {
+  background-color: rgb(var(--mdui-color-error));
+}
+
+.task-progress-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mdui-typescale-label-small-font-family);
+  font-size: var(--mdui-typescale-label-small-size);
+  line-height: 1;
+  /* `on-primary` over the filled part of the bar. */
+  color: rgb(var(--mdui-color-on-primary));
+}
+
+/* AriaNg's `.progress-lower`: below 50% the bar is too pale for on-primary ink. */
+.task-progress-value--lower {
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+/* ------------------------------------------------------------------ */
+/* header                                                              */
+/* ------------------------------------------------------------------ */
+
+.task-table-title {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  flex: none;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-family: var(--mdui-typescale-label-medium-font-family);
+  font-size: var(--mdui-typescale-label-medium-size);
+  line-height: var(--mdui-typescale-label-medium-line-height);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* AriaNg hides the whole header below 768 px — the row already carries every
+   field it would have shown. */
+@media (max-width: 767px) {
+  .task-table-title {
+    display: none;
+  }
+}
+
+/* Five tracks: name + size inside group A (8/12 of it), progress + remaining
+   inside group B (6/12 of it), then group C. `sm` proportions from AriaNg. */
+@media (min-width: 768px) {
+  .task-table-title {
+    grid-template-columns: 4.6667fr 2.3333fr 1.5fr 1.5fr 2fr auto;
+  }
+}
+
+@media (min-width: 992px) {
+  .task-table-title {
+    grid-template-columns: 5.3333fr 2.6667fr 1fr 1fr 2fr auto;
+  }
+}
+
+.task-header-cell {
+  min-width: 0;
+  padding-inline: 4px;
+}
+
+.task-header-cell--active {
+  color: rgb(var(--mdui-color-primary));
+}
+
+.task-header-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.task-header-button:focus-visible {
+  outline: 2px solid rgb(var(--mdui-color-primary));
+  outline-offset: 2px;
+  border-radius: var(--mdui-shape-corner-extra-small);
+}
+
+.task-header-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-header-icon {
+  flex: none;
+  opacity: 0.6;
+}
+
+.task-header-cell--active .task-header-icon {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* chevron                                                             */
+/* ------------------------------------------------------------------ */
+
+.task-right-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--mdui-color-outline));
+  text-decoration: none;
+}
+
+/* AriaNg only revealed the chevron on hover / selection. */
+.task-right-arrow {
+  visibility: hidden;
+}
+
+.task-row:hover .task-right-arrow,
+.task-row[aria-selected='true'] .task-right-arrow,
+.task-right-arrow:focus-visible {
+  visibility: visible;
+}
+
+.task-right-arrow:hover {
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* ------------------------------------------------------------------ */
+/* toolbar                                                             */
+/* ------------------------------------------------------------------ */
+
+.task-list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px calc(15px + env(safe-area-inset-right)) 8px calc(15px + env(safe-area-inset-left));
+}
+
+.task-list-toolbar__toggles,
+.task-list-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-list-toolbar__actions {
+  margin-left: auto;
+}
+
+.task-order-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* context menu                                                        */
+/* ------------------------------------------------------------------ */
+
+.task-context-menu {
+  min-width: 220px;
+}
+
+.task-context-submenu-trigger {
+  min-width: 200px;
+}
+
+/* ------------------------------------------------------------------ */
+/* empty state                                                         */
+/* ------------------------------------------------------------------ */
+
+.task-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 15px;
+  padding: 32px 16px;
+  text-align: center;
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.task-empty-title {
+  margin: 0;
+  font-family: var(--mdui-typescale-title-medium-font-family);
+  font-size: var(--mdui-typescale-title-medium-size);
+  line-height: var(--mdui-typescale-title-medium-line-height);
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+.task-empty-description {
+  margin: 0;
+  font-family: var(--mdui-typescale-body-medium-font-family);
+  font-size: var(--mdui-typescale-body-medium-size);
+}
+
+/* ------------------------------------------------------------------ */
+/* compact scrollbars                                                  */
+/* ------------------------------------------------------------------ */
+
+/* AriaNg thinned its scrollbars only on small screens; 6px is the MD3 overlay
+   width for a compact list. */
+@media (max-width: 767px) {
+  .task-table-rows,
+  .task-list-toolbar {
+    scrollbar-width: thin;
+  }
+
+  .task-table-rows::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .task-table-rows::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--mdui-color-outline-variant));
+    border-radius: var(--mdui-shape-corner-full);
+  }
+
+  .task-table-rows::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .task-list-toolbar {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* forced colours / high contrast                                      */
+/* ------------------------------------------------------------------ */
+
+@media (forced-colors: active) {
+  .task-row {
+    border-top: 1px solid CanvasText;
+  }
+
+  .task-progress {
+    border: 1px solid CanvasText;
+  }
+}

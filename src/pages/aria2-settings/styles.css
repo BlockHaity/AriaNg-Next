@@ -1,0 +1,136 @@
+/**
+ * `/settings/aria2/:group` styles — a scrollable column of option cards under a
+ * sticky header.
+ *
+ * Only `--mdui-color-*` / `--mdui-typescale-*` / `--mdui-shape-*` are used.
+ */
+
+.aria2-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  min-width: 0;
+}
+
+/* ---- sticky header ----------------------------------------------------- */
+
+.aria2-settings__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--mdui-shape-corner-extra-large);
+  background-color: rgb(var(--mdui-color-surface-container-high));
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+.aria2-settings__title {
+  margin: 0;
+  font: var(--mdui-typescale-title-large-font);
+}
+
+.aria2-settings__count {
+  font: var(--mdui-typescale-label-large-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+.aria2-settings__header > mdui-linear-progress {
+  flex: 1 1 100%;
+}
+
+/* ---- banners / errors -------------------------------------------------- */
+
+.aria2-settings__banner,
+.aria2-settings__error-text {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mdui-shape-corner-small);
+  font: var(--mdui-typescale-body-medium-font);
+}
+
+.aria2-settings__banner {
+  background-color: rgb(var(--mdui-color-tertiary-container));
+  color: rgb(var(--mdui-color-on-tertiary-container));
+}
+
+.aria2-settings__error-text {
+  background-color: rgb(var(--mdui-color-error-container));
+  color: rgb(var(--mdui-color-on-error-container));
+}
+
+.aria2-settings__note {
+  margin: 0.25rem 0.75rem 0;
+  font: var(--mdui-typescale-body-small-font);
+  color: rgb(var(--mdui-color-on-surface-variant));
+}
+
+/* ---- scroll area ------------------------------------------------------- */
+
+.aria2-settings__scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* ---- one card per option ----------------------------------------------- */
+
+.aria2-settings__card {
+  position: relative;
+  border: 1px solid rgb(var(--mdui-color-outline-variant));
+  border-radius: var(--mdui-shape-corner-large);
+  background-color: rgb(var(--mdui-color-surface-container-lowest));
+  overflow: visible;
+}
+
+.aria2-settings__card .option-row {
+  border-bottom: none;
+}
+
+/*
+ * AriaNg's alternating error-tooltip placement:
+ * `error-tooltip-placement="{{$index > 0 ? 'top' : 'bottom'}}"`. The tooltip is
+ * absolutely positioned next to its row so a long list does not reflow when one
+ * save fails.
+ */
+.aria2-settings__error {
+  position: absolute;
+  inset-inline-end: 1rem;
+  max-width: 32rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mdui-shape-corner-extra-small);
+  background-color: rgb(var(--mdui-color-inverse-surface));
+  color: rgb(var(--mdui-color-inverse-on-surface));
+  font: var(--mdui-typescale-body-small-font);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.aria2-settings__error:empty {
+  display: none;
+}
+
+.aria2-settings__error--top {
+  top: 0.5rem;
+}
+
+.aria2-settings__error--bottom {
+  bottom: 0.5rem;
+}
+
+/* ---- Global Rate Limit dialog ------------------------------------------ */
+
+.aria2-settings__dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: min(36rem, 90vw);
+}
