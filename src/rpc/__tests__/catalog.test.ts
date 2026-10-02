@@ -25,7 +25,8 @@ const EXPECTED_BARE_NAMES = [
   'unpauseAll',
   'changePosition',
   'changeUri',
-  'selectFile',
+  // NOTE: `selectFile` is intentionally NOT a raw RPC method — file selection
+  // is the `select-file` option set through `aria2.changeOption`.
   'purgeDownloadResult',
   'removeDownloadResult',
   'tellStatus',

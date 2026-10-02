@@ -169,11 +169,10 @@ export const RPC_METHOD_CATALOG: readonly RpcMethodMeta[] = withFullNames([
     service: RPC_SERVICE_NAME,
     summary: 'Add or remove URIs of a running download in place.',
   },
-  {
-    name: 'selectFile',
-    service: RPC_SERVICE_NAME,
-    summary: 'Choose which files of a torrent to download (the `select-file` option).',
-  },
+  // NOTE: there is deliberately no `aria2.selectFile` entry. Verified against
+  // the aria2-next manual: file selection is the `select-file` *option*, set
+  // through `aria2.changeOption`. `Aria2Client.selectFile()` is a convenience
+  // wrapper over changeOption and is therefore absent from this catalogue.
 
   /* ---- options ---- */
   {
