@@ -29,7 +29,8 @@ import { useTranslate } from '@/i18n/react';
 import type { OptionGroupRoute } from '@/config/types';
 import type { Aria2OptionMap } from '@/rpc/types';
 import { useRpcStore } from '@/store/rpc-store';
-import { MduiProgressBar } from '@/ui/mdui';
+import { MduiIconButton, MduiProgressBar } from '@/ui/mdui';
+import { ExportAria2ConfDialog } from './ExportAria2ConfDialog';
 import { Aria2GroupSwitcher } from './GroupSwitcher';
 import { OptionGroupView } from './OptionGroupView';
 import { useIsCompactLayout } from '@/app/shell';
@@ -67,6 +68,7 @@ export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
 
   const routeGroup = group ?? params.group ?? '';
   const version = useRpcStore((state) => state.version);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // `false` means "illegal route", exactly as AriaNg's option service reported.
   // Memoised because the panel's load effect depends on it: a fresh array would
@@ -103,6 +105,18 @@ export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
         <span className="aria2-settings__count">
           {t('format.settings.total-count', { count: keys.length })}
         </span>
+
+        {/*
+          Export lives on the page rather than in the navigation because it acts on
+          the whole daemon, not on the group on screen: one click exports all ten
+          groups, whichever one happens to be open.
+        */}
+        <MduiIconButton
+          icon="save"
+          label={t('Export aria2.conf')}
+          className="aria2-settings__export"
+          onClick={() => setExportOpen(true)}
+        />
       </header>
 
       {/*
@@ -122,6 +136,8 @@ export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
 
       <OptionGroupPanel key={routeGroup} keys={keys} />
       </div>
+
+      <ExportAria2ConfDialog open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 }

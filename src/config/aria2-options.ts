@@ -1333,7 +1333,11 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     type: 'string',
     category: 'bt',
     defaultValue: '',
-    support: 'current',
+    support: 'deprecated',
+    aria2NextNote:
+      'Legacy conf alias for --bt-interface (Listen interface, shared with the BitTorrent listener.). aria2-next still reports it over RPC, but'
+      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
+      + ' it is skipped when --bt-interface is also set. Configure the target instead.',
   },
   /**
    * `--dht-listen-addr`
@@ -1348,7 +1352,11 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     type: 'string',
     category: 'bt',
     defaultValue: '',
-    support: 'current',
+    support: 'deprecated',
+    aria2NextNote:
+      'Legacy conf alias for --bt-interface (DHT listen socket, shared with the BitTorrent listener.). aria2-next still reports it over RPC, but'
+      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
+      + ' it is skipped when --bt-interface is also set. Configure the target instead.',
   },
   /**
    * `--dht-listen-addr6`
@@ -1361,7 +1369,11 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     type: 'string',
     category: 'bt',
     defaultValue: '',
-    support: 'current',
+    support: 'deprecated',
+    aria2NextNote:
+      'Legacy conf alias for --bt-interface (IPv6 counterpart of dht-listen-addr.). aria2-next still reports it over RPC, but'
+      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
+      + ' it is skipped when --bt-interface is also set. Configure the target instead.',
   },
   /**
    * `--dht-entry-point`
@@ -1376,7 +1388,11 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     category: 'bt',
     separator: ',',
     defaultValue: 'dht.libtorrent.org:25401,dht.transmissionbt.com:6881,router.bt.ouinet.work:6881',
-    support: 'current',
+    support: 'deprecated',
+    aria2NextNote:
+      'Legacy conf alias for --bt-dht-bootstrap-nodes (Bootstrap node list.). aria2-next still reports it over RPC, but'
+      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
+      + ' it is skipped when --bt-dht-bootstrap-nodes is also set. Configure the target instead.',
   },
   /**
    * `--dht-entry-point6`
@@ -1390,7 +1406,11 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     category: 'bt',
     separator: ',',
     defaultValue: 'dht.libtorrent.org:25401,dht.transmissionbt.com:6881,router.bt.ouinet.work:6881',
-    support: 'current',
+    support: 'deprecated',
+    aria2NextNote:
+      'Legacy conf alias for --bt-dht-bootstrap-nodes (IPv6 counterpart of dht-entry-point.). aria2-next still reports it over RPC, but'
+      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
+      + ' it is skipped when --bt-dht-bootstrap-nodes is also set. Configure the target instead.',
   },
   /**
    * `--dht-listen-port`

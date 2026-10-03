@@ -76,6 +76,15 @@ export const ARIA2_NEXT_UI_STRINGS: Record<string, string> = {
  * AriaNg never had. Descriptions deliberately explain what changed rather than
  * restating the option name — that is the only information the user lacks.
  */
+export const ARIA2_NEXT_CONF_STRINGS: Record<string, string> = {
+  'Export aria2.conf': '导出 aria2.conf',
+  'aria2.conf data': 'aria2.conf 内容',
+  'This is a snapshot of the running daemon. aria2.changeGlobalOption never writes to disk, so options changed here are lost on restart unless this file is applied.':
+    '这是运行中守护进程的快照。aria2.changeGlobalOption 从不写入磁盘,在此处修改的选项在重启后就会丢失,除非应用本文件。',
+  'Omitted: {{keys}} — the value cannot be written on one line.':
+    '已省略:{{keys}} —— 该值无法写在同一行上。',
+};
+
 export const ARIA2_NEXT_OPTION_STRINGS: Record<string, string> = {
   /* ---- streaming / naming ---- */
   'filename-hint': 'File Name Hint',
@@ -366,6 +375,7 @@ export const ARIA2_NEXT_OPTION_STRINGS: Record<string, string> = {
  */
 export const ARIA2_NEXT_STRINGS: Record<string, string> = {
   ...ARIA2_NEXT_UI_STRINGS,
+  ...ARIA2_NEXT_CONF_STRINGS,
   ...Object.fromEntries(
     Object.entries(ARIA2_NEXT_OPTION_STRINGS).map(([key, value]) => [
       key.endsWith('.description') ? `options.${key}` : `options.${key}.name`,

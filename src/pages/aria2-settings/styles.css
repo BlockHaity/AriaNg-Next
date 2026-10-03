@@ -59,6 +59,11 @@
   color: rgb(var(--mdui-color-on-surface-variant));
 }
 
+/* Pushed to the trailing edge of the sticky header, whatever else wraps onto it. */
+.aria2-settings__export {
+  margin-left: auto;
+}
+
 .aria2-settings__header > mdui-linear-progress {
   flex: 1 1 100%;
 }
