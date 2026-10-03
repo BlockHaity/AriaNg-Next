@@ -23,6 +23,12 @@ updates:
       major-updates:
         update-types:
           - major
+    # typescript-eslint 8.x peer-supports only `>=4.8.4 <6.1.0`; a TS major
+    # bump (e.g. 7.x) breaks `npm ci` in CI until the toolchain catches up.
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     labels:
       - dependencies
     commit-message:

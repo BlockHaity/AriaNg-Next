@@ -177,17 +177,16 @@ export default defineConfig(({ mode }) => {
           }
         : {
             output: {
-              manualChunks: {
-                react: ['react', 'react-dom', 'react-router-dom'],
-                mdui: ['mdui'],
-                echarts: ['echarts/core', 'echarts/charts', 'echarts/components', 'echarts/renderers'],
+              // Rolldown only accepts the function form of `manualChunks`.
+              manualChunks: (id: string) => {
+                if (!id.includes('node_modules')) return;
+                if (/node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id))
+                  return 'react';
+                if (/node_modules[\\/]mdui[\\/]/.test(id)) return 'mdui';
+                if (/node_modules[\\/]echarts[\\/]/.test(id)) return 'echarts';
               },
             },
           },
-    },
-
-    esbuild: {
-      legalComments: 'none',
     },
 
     server: {

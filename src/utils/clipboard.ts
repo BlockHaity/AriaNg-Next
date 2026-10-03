@@ -39,7 +39,7 @@ export function copyToClipboard(text: string): Promise<boolean> {
     area.style.opacity = '0';
 
     const previous = document.activeElement;
-    let copied = false;
+    let copied: boolean;
 
     try {
       document.body.appendChild(area);

@@ -332,7 +332,7 @@ function GlobalSettingRow(props: GlobalSettingRowProps) {
   const t = useTranslate();
 
   const current = readValue(settings, session, field);
-  let control: ReactNode = null;
+  let control: ReactNode;
   let stacked = false;
 
   switch (field.kind) {
