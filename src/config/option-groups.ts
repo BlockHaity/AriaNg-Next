@@ -74,10 +74,16 @@ export const ARIA2_GLOBAL_GROUPS: Record<OptionGroupRoute, GlobalOptionGroup> = 
       'bt-stop-timeout', 'bt-tracker', 'bt-tracker-connect-timeout', 'bt-tracker-interval',
       'bt-tracker-timeout', 'dht-file-path', 'dht-file-path6', 'dht-listen-port',
       'dht-message-timeout', 'enable-dht', 'enable-dht6', 'enable-peer-exchange', 'follow-torrent',
-      // aria2-next moved DHT and LPD into its native BitTorrent stack; these five
-      // are what that produced, and are absent from the aria2 manual (verified
-      // against aria2-next 2.8.3 `getGlobalOption`).
-      'bt-lpd-interface', 'dht-listen-addr', 'dht-listen-addr6', 'dht-entry-point', 'dht-entry-point6',
+      // aria2-next moved DHT and LPD into its native BitTorrent stack. The options
+      // that came with it --bt-interface, --bt-dht-bootstrap-nodes -- are listed above
+      // and are the ones to configure.
+      //
+      // Its conf parser *also* accepts the pre-rename spellings below and still
+      // reports them over RPC, so they stay in the catalogue (removing them would make
+      // `verify-option-catalogue` report them missing), but they are deliberately not
+      // in this list: rendering them gave five locked rows duplicating a setting the
+      // user can already edit, carrying a "deprecated" tag and a note explaining why
+      // they should not be used.
       'listen-port', 'max-overall-upload-limit', 'max-upload-limit', 'peer-id-prefix', 'peer-agent',
       'seed-ratio', 'seed-time', 'select-file', 'index-out', 'torrent-file', 'bt-interface',
       'bt-dht-bootstrap-nodes', 'bt-encryption', 'bt-transport', 'bt-external-port',

@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { APP_CONSTANTS } from '@/config/defaults';
-import { getOptionMeta } from '@/config/aria2-options';
+import { getOptionMeta, isProductSince } from '@/config/aria2-options';
 import type { Aria2OptionMeta } from '@/config/types';
 import { useTranslate } from '@/i18n/react';
 import { getSettingHistory } from '@/store/history';
@@ -348,8 +348,17 @@ export function OptionRow(props: OptionRowProps) {
           <span className="option-row__count">{t('format.settings.total-count', { count: totalCount })}</span>
         ) : null}
 
+        {/*
+          `since` is either an aria2 release or the name of a fork. Routing it through
+          the version template unconditionally rendered "需要 aria2 varia2-next 或更高版本"
+          on every aria2-next row — see `isProductSince`.
+        */}
         {meta.since ? (
-          <span className="option-row__since">{t('format.requires.aria2-version', { version: meta.since })}</span>
+          <span className="option-row__since">
+            {isProductSince(meta.since)
+              ? t('format.requires.product', { product: meta.since })
+              : t('format.requires.aria2-version', { version: meta.since })}
+          </span>
         ) : null}
       </div>
 

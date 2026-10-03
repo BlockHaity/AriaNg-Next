@@ -1334,10 +1334,7 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     category: 'bt',
     defaultValue: '',
     support: 'deprecated',
-    aria2NextNote:
-      'Legacy conf alias for --bt-interface (Listen interface, shared with the BitTorrent listener.). aria2-next still reports it over RPC, but'
-      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
-      + ' it is skipped when --bt-interface is also set. Configure the target instead.',
+    aria2NextNote: 'Legacy conf alias for --bt-interface. Not rendered; configure --bt-interface instead.'
   },
   /**
    * `--dht-listen-addr`
@@ -1353,10 +1350,7 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     category: 'bt',
     defaultValue: '',
     support: 'deprecated',
-    aria2NextNote:
-      'Legacy conf alias for --bt-interface (DHT listen socket, shared with the BitTorrent listener.). aria2-next still reports it over RPC, but'
-      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
-      + ' it is skipped when --bt-interface is also set. Configure the target instead.',
+    aria2NextNote: 'Legacy conf alias for --bt-interface. Not rendered; configure --bt-interface instead.'
   },
   /**
    * `--dht-listen-addr6`
@@ -1370,10 +1364,7 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     category: 'bt',
     defaultValue: '',
     support: 'deprecated',
-    aria2NextNote:
-      'Legacy conf alias for --bt-interface (IPv6 counterpart of dht-listen-addr.). aria2-next still reports it over RPC, but'
-      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
-      + ' it is skipped when --bt-interface is also set. Configure the target instead.',
+    aria2NextNote: 'Legacy conf alias for --bt-interface. Not rendered; configure --bt-interface instead.'
   },
   /**
    * `--dht-entry-point`
@@ -1389,10 +1380,7 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     separator: ',',
     defaultValue: 'dht.libtorrent.org:25401,dht.transmissionbt.com:6881,router.bt.ouinet.work:6881',
     support: 'deprecated',
-    aria2NextNote:
-      'Legacy conf alias for --bt-dht-bootstrap-nodes (Bootstrap node list.). aria2-next still reports it over RPC, but'
-      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
-      + ' it is skipped when --bt-dht-bootstrap-nodes is also set. Configure the target instead.',
+    aria2NextNote: 'Legacy conf alias for --bt-dht-bootstrap-nodes. Not rendered; configure --bt-dht-bootstrap-nodes instead.'
   },
   /**
    * `--dht-entry-point6`
@@ -1407,10 +1395,7 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     separator: ',',
     defaultValue: 'dht.libtorrent.org:25401,dht.transmissionbt.com:6881,router.bt.ouinet.work:6881',
     support: 'deprecated',
-    aria2NextNote:
-      'Legacy conf alias for --bt-dht-bootstrap-nodes (IPv6 counterpart of dht-entry-point.). aria2-next still reports it over RPC, but'
-      + ' writing it to a conf file logs \'Legacy aria2 input from configuration\' and'
-      + ' it is skipped when --bt-dht-bootstrap-nodes is also set. Configure the target instead.',
+    aria2NextNote: 'Legacy conf alias for --bt-dht-bootstrap-nodes. Not rendered; configure --bt-dht-bootstrap-nodes instead.'
   },
   /**
    * `--dht-listen-port`
@@ -3574,6 +3559,22 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
 export const ARIA2_ALL_OPTION_KEYS: string[] = Object.keys(ARIA2_ALL_OPTIONS);
 
 /** Look up the metadata of one option key, or `undefined` when unknown. */
+/**
+ * Is this `since` a product name rather than an aria2 version number?
+ *
+ * `since` carries two different things: a release (`'1.19.3'`) and a *product*
+ * (`'aria2-next'`). aria2-next is a fork with its own option set, not a later aria2,
+ * so `aria2-next` must not be rendered through a template that says "Requires aria2
+ * v{{version}} or higher" — that produced "需要 aria2 varia2-next 或更高版本" on all
+ * 112 aria2-next rows.
+ *
+ * A leading digit is the discriminator: every upstream release starts with one and no
+ * product name does.
+ */
+export function isProductSince(since: string): boolean {
+  return !/^\d/.test(since);
+}
+
 export function getOptionMeta(key: string): OptionMeta | undefined {
   return Object.hasOwn(ARIA2_ALL_OPTIONS, key) ? ARIA2_ALL_OPTIONS[key] : undefined;
 }

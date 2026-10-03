@@ -382,6 +382,7 @@ export const en: TranslationTable = {
     "time.hour": "{{value}} Hour",
     "time.hours": "{{value}} Hours",
     "requires.aria2-version": "Requires aria2 v{{version}} or higher",
+    "requires.product": "Requires {{product}}",
     "task.new.download-links": "Download Links ({{count}} Links):",
     "task.pieceinfo": "Completed: {{completed}}, Total: {{total}}",
     "task.error-occurred": "Error Occurred ({{errorcode}})",

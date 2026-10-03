@@ -383,6 +383,7 @@ export const cz_CZ: TranslationTable = {
     "time.hour": "{{value}} hodina",
     "time.hours": "{{value}} hodin",
     "requires.aria2-version": "Vyžaduje Aria2 v{{version}} nebo vyšší",
+    "requires.product": "Vyžaduje {{product}}",
     "task.new.download-links": "Odkazy ke stažení ({{count}} odkazů):",
     "task.pieceinfo": "Dokončeno: {{completed}}, Celkem: {{total}}",
     "task.error-occurred": "Došlo k chybě ({{errorcode}})",

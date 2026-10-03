@@ -261,6 +261,7 @@ export const it_IT: TranslationTable = {
     "time.hour": "{{value}} ora",
     "time.hours": "{{value}} ore",
     "requires.aria2-version": "Richiede la versione {{version}} di aria2",
+    "requires.product": "Richiede {{product}}",
     "task.new.download-links": "Collegamenti per il download ({{count}} collegamenti):",
     "task.pieceinfo": "Completati: {{completed}}, Totale: {{total}} blocchi",
     "task.error-occurred": "Si è verificato un errore ({{errorcode}})",

@@ -383,6 +383,7 @@ export const ru_RU: TranslationTable = {
     "time.hour": "{{value}} час",
     "time.hours": "{{value}} часов",
     "requires.aria2-version": "Требуется версия {{version}} aria2",
+    "requires.product": "Требуется {{product}}",
     "task.new.download-links": "Ссылки для загрузки ({{count}} ссылки):",
     "task.pieceinfo": "Завершено: {{completed}}, Всего: {{total}} блоков",
     "task.error-occurred": "Произошла ошибка ({{errorcode}})",

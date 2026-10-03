@@ -383,6 +383,7 @@ export const ja_JP: TranslationTable = {
     "time.hour": "{{value}} 時間",
     "time.hours": "{{value}} 時間",
     "requires.aria2-version": "aria2 v{{version}} 以上が必要です",
+    "requires.product": "{{product}} が必要です",
     "task.new.download-links": "ダウンロードリンク ({{count}} 件):",
     "task.pieceinfo": "完了: {{completed}}, 合計: {{total}}",
     "task.error-occurred": "エラーが発生しました ({{errorcode}})",

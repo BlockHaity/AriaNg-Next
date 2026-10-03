@@ -383,6 +383,7 @@ export const zh_Hans: TranslationTable = {
     "time.hour": "{{value}} 小时",
     "time.hours": "{{value}} 小时",
     "requires.aria2-version": "需要 aria2 v{{version}} 或更高版本",
+    "requires.product": "需要 {{product}}",
     "task.new.download-links": "下载链接 ({{count}} 个链接):",
     "task.pieceinfo": "已完成: {{completed}}, 共计: {{total}} 块",
     "task.error-occurred": "发生错误 ({{errorcode}})",
