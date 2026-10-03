@@ -13,3 +13,5 @@ tsconfig.tsbuildinfo
 !.vscode/extensions.json
 npm-debug.log*
 yarn-error.log*
+/pnpm-lock.yaml
+/pnpm-workspace.yaml

@@ -74,6 +74,10 @@ export const ARIA2_GLOBAL_GROUPS: Record<OptionGroupRoute, GlobalOptionGroup> = 
       'bt-stop-timeout', 'bt-tracker', 'bt-tracker-connect-timeout', 'bt-tracker-interval',
       'bt-tracker-timeout', 'dht-file-path', 'dht-file-path6', 'dht-listen-port',
       'dht-message-timeout', 'enable-dht', 'enable-dht6', 'enable-peer-exchange', 'follow-torrent',
+      // aria2-next moved DHT and LPD into its native BitTorrent stack; these five
+      // are what that produced, and are absent from the aria2 manual (verified
+      // against aria2-next 2.8.3 `getGlobalOption`).
+      'bt-lpd-interface', 'dht-listen-addr', 'dht-listen-addr6', 'dht-entry-point', 'dht-entry-point6',
       'listen-port', 'max-overall-upload-limit', 'max-upload-limit', 'peer-id-prefix', 'peer-agent',
       'seed-ratio', 'seed-time', 'select-file', 'index-out', 'torrent-file', 'bt-interface',
       'bt-dht-bootstrap-nodes', 'bt-encryption', 'bt-transport', 'bt-external-port',

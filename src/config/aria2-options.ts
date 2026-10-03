@@ -1321,6 +1321,78 @@ export const ARIA2_ALL_OPTIONS: Record<string, OptionMeta> = {
     aria2NextNote: 'Dropped in aria2-next: IPv6 DHT shares the native routing table with IPv4.',
   },
   /**
+   * `--bt-lpd-interface`
+   *
+   * aria2-next: Local Peer Discovery listen interface. Reported by the live daemon
+   * (aria2-next 2.8.3 `getGlobalOption`) but missing from this catalogue, so the
+   * option was invisible in the UI.
+   */
+  'bt-lpd-interface': {
+    key: 'bt-lpd-interface',
+    since: 'aria2-next',
+    type: 'string',
+    category: 'bt',
+    defaultValue: '',
+    support: 'current',
+  },
+  /**
+   * `--dht-listen-addr`
+   *
+   * aria2-next: The per-address DHT listen socket. aria2-next retired
+   * `--dht-listen-port` because DHT now shares the BitTorrent listener, and this
+   * is what replaced it.
+   */
+  'dht-listen-addr': {
+    key: 'dht-listen-addr',
+    since: 'aria2-next',
+    type: 'string',
+    category: 'bt',
+    defaultValue: '',
+    support: 'current',
+  },
+  /**
+   * `--dht-listen-addr6`
+   *
+   * aria2-next: The IPv6 counterpart of `dht-listen-addr`.
+   */
+  'dht-listen-addr6': {
+    key: 'dht-listen-addr6',
+    since: 'aria2-next',
+    type: 'string',
+    category: 'bt',
+    defaultValue: '',
+    support: 'current',
+  },
+  /**
+   * `--dht-entry-point`
+   *
+   * aria2-next: Bootstrap nodes for the native DHT stack. This is where aria2-next
+   * moved the node list that upstream aria2 read from `dht-file-path`.
+   */
+  'dht-entry-point': {
+    key: 'dht-entry-point',
+    since: 'aria2-next',
+    type: 'string',
+    category: 'bt',
+    separator: ',',
+    defaultValue: 'dht.libtorrent.org:25401,dht.transmissionbt.com:6881,router.bt.ouinet.work:6881',
+    support: 'current',
+  },
+  /**
+   * `--dht-entry-point6`
+   *
+   * aria2-next: The IPv6 counterpart of `dht-entry-point`.
+   */
+  'dht-entry-point6': {
+    key: 'dht-entry-point6',
+    since: 'aria2-next',
+    type: 'string',
+    category: 'bt',
+    separator: ',',
+    defaultValue: 'dht.libtorrent.org:25401,dht.transmissionbt.com:6881,router.bt.ouinet.work:6881',
+    support: 'current',
+  },
+  /**
    * `--dht-listen-port`
    * aria2-next: Dropped in aria2-next: DHT shares --listen-port with the rest of the BitTorrent
    * listener.
