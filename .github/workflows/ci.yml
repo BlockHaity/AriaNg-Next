@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage/
@@ -145,7 +145,7 @@ jobs:
         run: node scripts/check-bundle-size.mjs --dir dist --check-relative-assets
 
       - name: Upload dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-standard
           path: dist/
@@ -192,7 +192,7 @@ jobs:
         run: node scripts/check-bundle-size.mjs --dir dist-single --entry index.html --budget 3145728
 
       - name: Upload dist-single
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-single
           path: dist-single/
