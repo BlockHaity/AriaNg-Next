@@ -117,12 +117,17 @@ jobs:
         run: node scripts/check-bundle-size.mjs --dir dist-single --entry index.html --budget 3145728
 
       - name: Archive assets
+        env:
+          # Use the resolved tag, not GITHUB_REF_NAME: on workflow_dispatch runs
+          # the ref name is the branch (e.g. `main`), which would misname the
+          # files the publish step looks for below.
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
           # A single downloadable HTML is the artefact users double-click; the
           # standard build is what gets served behind a web server.
-          cp dist-single/index.html "ariang-next-${GITHUB_REF_NAME#v}-single.html"
-          tar -czf "ariang-next-${GITHUB_REF_NAME#v}-dist.tar.gz" -C dist .
+          cp dist-single/index.html "ariang-next-${TAG#v}-single.html"
+          tar -czf "ariang-next-${TAG#v}-dist.tar.gz" -C dist .
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
