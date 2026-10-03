@@ -37,8 +37,8 @@ import { buildHashUrl } from '../hash-history';
 import { aria2SettingsRoute, Routes as RoutePaths } from '../route-paths';
 import { useTranslate } from '@/i18n';
 import { RpcStatus } from '@/config/rpc-constants';
+import { ARIA2_GROUP_ICONS, ARIA2_GROUP_TITLE_KEYS } from '@/config/option-groups';
 import { OPTION_GROUP_ROUTES } from '@/config/types';
-import type { OptionGroupRoute } from '@/config/types';
 import { useRpcStore } from '@/store/rpc-store';
 import { useSettingsStore } from '@/store/settings';
 import { useUiStore } from '@/store/ui';
@@ -93,37 +93,10 @@ export type NavEntry = NavLink | NavCollapse;
  * — 8 of the 10 exist verbatim; `ed2k` / `media` fall back to their own label
  * until the i18n agent adds them.
  */
-const ARIA2_GROUP_LABEL_KEYS: Record<OptionGroupRoute, string> = {
-  basic: 'Basic Settings',
-  'http-ftp-sftp': 'HTTP/FTP/SFTP Settings',
-  http: 'HTTP Settings',
-  'ftp-sftp': 'FTP/SFTP Settings',
-  bt: 'BitTorrent Settings',
-  ed2k: 'ED2K Settings',
-  media: 'Media Settings',
-  metalink: 'Metalink Settings',
-  rpc: 'RPC Settings',
-  advanced: 'Advanced Settings',
-};
-
-/** Icons per group, chosen to stay inside the app's imported icon set. */
-const ARIA2_GROUP_ICONS: Record<OptionGroupRoute, string> = {
-  basic: 'tune',
-  'http-ftp-sftp': 'public',
-  http: 'language',
-  'ftp-sftp': 'folder-open',
-  bt: 'hub',
-  ed2k: 'bolt',
-  media: 'movie',
-  metalink: 'link',
-  rpc: 'dns',
-  advanced: 'terminal',
-};
-
 /** The 10 aria2 settings pages, in navigation order. */
 export const ARIA2_SETTINGS_ITEMS: readonly NavCollapseItem[] = OPTION_GROUP_ROUTES.map((group) => ({
   path: aria2SettingsRoute(group),
-  labelKey: ARIA2_GROUP_LABEL_KEYS[group],
+  labelKey: ARIA2_GROUP_TITLE_KEYS[group],
   icon: ARIA2_GROUP_ICONS[group],
 }));
 

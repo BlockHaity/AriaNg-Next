@@ -1,0 +1,63 @@
+/**
+ * The aria2 settings group's in-page switcher.
+ *
+ * A left-hand column beside the option list from the `md` breakpoint upwards, and a
+ * horizontally scrollable row of chips below it — the same responsive inversion the
+ * navigation itself uses, so the two never disagree about which layout is in effect.
+ *
+ * Only `--mdui-color-*` / `--mdui-typescale-*` / `--mdui-shape-*` are used.
+ */
+
+.aria2-group-switcher {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.aria2-group-switcher mdui-list {
+  padding: 0;
+  overflow: hidden auto;
+  border-radius: var(--mdui-shape-corner-extra-large);
+  background-color: rgb(var(--mdui-color-surface-container-low));
+  color: rgb(var(--mdui-color-on-surface));
+}
+
+/*
+ * The row layout: `mdui-list` is a block column, so the compact variant turns it
+ * into a single scrollable line. `auto`/`mandatory` on the inline axis keeps the
+ * scrollbar from stealing the row's height in the two scrollbar flavours.
+ */
+.aria2-group-switcher--compact mdui-list {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.aria2-group-switcher--compact mdui-list-subheader {
+  display: none;
+}
+
+.aria2-group-switcher--compact mdui-list-item {
+  flex: 0 0 auto;
+  border-radius: var(--mdui-shape-corner-full);
+}
+
+/*
+ * MD3 expresses "this is the selected destination" with a secondary-container fill,
+ * which is what `active` already gives a list item; the switcher only has to make
+ * sure the compact variant does not clip that fill to the text box.
+ */
+.aria2-group-switcher--compact mdui-list-item[active] {
+  padding-right: 1rem;
+}
+
+/* ---- wide layout ------------------------------------------------------- */
+
+@media (min-width: 840px) {
+  .aria2-group-switcher {
+    width: 16rem;
+  }
+}

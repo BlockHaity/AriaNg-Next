@@ -24,12 +24,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getOptionMeta } from '@/config/aria2-options';
-import { ARIA2_GLOBAL_GROUPS, getGlobalOptionKeys } from '@/config/option-groups';
+import { ARIA2_GLOBAL_GROUPS, ARIA2_GROUP_TITLE_KEYS, getGlobalOptionKeys } from '@/config/option-groups';
 import { useTranslate } from '@/i18n/react';
+import type { OptionGroupRoute } from '@/config/types';
 import type { Aria2OptionMap } from '@/rpc/types';
 import { useRpcStore } from '@/store/rpc-store';
 import { MduiProgressBar } from '@/ui/mdui';
+import { Aria2GroupSwitcher } from './GroupSwitcher';
 import { OptionGroupView } from './OptionGroupView';
+import { useIsCompactLayout } from '@/app/shell';
 
 import './styles.css';
 
@@ -46,22 +49,9 @@ const ARIA2_NEXT_ONLY_GROUPS: readonly string[] = ['ed2k', 'media'];
  * recognise, so they are mapped here; the two aria2-next groups have no upstream
  * title yet and get a plain English one, which `t()` renders verbatim.
  */
-const GROUP_TITLE_KEYS: Readonly<Record<string, string>> = {
-  basic: 'Basic Settings',
-  'http-ftp-sftp': 'HTTP/FTP/SFTP Settings',
-  http: 'HTTP Settings',
-  'ftp-sftp': 'FTP/SFTP Settings',
-  bt: 'BitTorrent Settings',
-  ed2k: 'ED2K Settings',
-  media: 'Media Settings',
-  metalink: 'Metalink Settings',
-  rpc: 'RPC Settings',
-  advanced: 'Advanced Settings',
-};
-
 /** Header title of a route; the catalogue's own key is the fallback. */
 export function groupTitleKey(group: string, catalogueLabelKey?: string): string {
-  return GROUP_TITLE_KEYS[group] ?? catalogueLabelKey ?? group;
+  return ARIA2_GROUP_TITLE_KEYS[group as OptionGroupRoute] ?? catalogueLabelKey ?? group;
 }
 
 export interface Aria2SettingsPageProps {
@@ -72,6 +62,8 @@ export interface Aria2SettingsPageProps {
 export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
   const params = useParams<{ group?: string }>();
   const t = useTranslate();
+  // The shell's own breakpoint helper: `md` and up gets the side-by-side layout.
+  const compact = useIsCompactLayout();
 
   const routeGroup = group ?? params.group ?? '';
   const version = useRpcStore((state) => state.version);
@@ -96,7 +88,16 @@ export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
   const showAria2NextBanner = version !== undefined && version.product !== 'aria2-next';
 
   return (
-    <div className="aria2-settings">
+    <div className={compact ? 'aria2-settings aria2-settings--compact' : 'aria2-settings'}>
+      {/*
+        The switcher sits beside the option list from `md` upwards and scrolls
+        horizontally below it. `useIsCompactLayout` is the shell's own breakpoint
+        helper rather than a fresh media query, so the switcher's layout can never
+        disagree with the navigation's.
+      */}
+      <Aria2GroupSwitcher compact={compact} />
+
+      <div className="aria2-settings__main">
       <header className="aria2-settings__header">
         <h1 className="aria2-settings__title">{t(groupTitleKey(routeGroup, meta?.labelKey))}</h1>
         <span className="aria2-settings__count">
@@ -120,6 +121,7 @@ export function Aria2SettingsPage({ group }: Aria2SettingsPageProps = {}) {
       ) : null}
 
       <OptionGroupPanel key={routeGroup} keys={keys} />
+      </div>
     </div>
   );
 }

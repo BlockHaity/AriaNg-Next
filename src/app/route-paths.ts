@@ -24,8 +24,39 @@ export const Routes = {
   Ed2kSearch: '/ed2k/search',
 } as const;
 
+/**
+ * The ten aria2 option groups, in the order AriaNg listed them.
+ *
+ * Re-exported from `@/config/types` rather than redeclared: the drawer's collapse,
+ * the settings page's switcher and `ARIA2_GLOBAL_GROUPS` all have to agree about
+ * which groups exist, and a second copy of this array is exactly how they stop
+ * agreeing.
+ */
+export { OPTION_GROUP_ROUTES } from '@/config/types';
+export type { OptionGroupRoute } from '@/config/types';
+
+/** The group the aria2 settings section opens on. */
+export const DEFAULT_ARIA2_GROUP = 'basic' as const;
+
 /** `/settings/aria2/:group` — built dynamically, listed in the nav drawer. */
 export const aria2SettingsRoute = (group: string) => `/settings/aria2/${group}`;
+
+/** The shared `/settings/aria2` prefix every group route sits under. */
+export const ARIA2_SETTINGS_SECTION_PREFIX = '/settings/aria2';
+
+/** Where the "Aria2 Settings" navigation entry points when no group is chosen. */
+export const aria2SettingsSectionRoute = aria2SettingsRoute(DEFAULT_ARIA2_GROUP);
+
+/**
+ * Is this pathname somewhere inside the aria2 settings section?
+ *
+ * The section spans ten sibling routes, so a navigation entry pointing at one of
+ * them (the rail row points at the default group) has to claim all of them or it
+ * stops being highlighted the moment the user picks a different group.
+ */
+export function isAria2SettingsPath(pathname: string): boolean {
+  return pathname === ARIA2_SETTINGS_SECTION_PREFIX || pathname.startsWith(`${ARIA2_SETTINGS_SECTION_PREFIX}/`);
+}
 
 export const DEFAULT_ROUTE = Routes.Downloading;
 

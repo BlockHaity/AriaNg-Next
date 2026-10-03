@@ -23,8 +23,9 @@ import { useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { buildHashUrl } from '../hash-history';
+import { aria2SettingsSectionRoute, isAria2SettingsPath } from '../route-paths';
 import { isNavItemActive, NAV_DOWNLOAD_ENTRIES, NAV_SETTINGS_ENTRIES } from './NavigationDrawer';
-import type { NavBadge } from './NavigationDrawer';
+import type { NavBadge, NavLink } from './NavigationDrawer';
 import { useTranslate } from '@/i18n';
 import { useRpcStore } from '@/store/rpc-store';
 import { useSettingsStore } from '@/store/settings';
@@ -41,13 +42,21 @@ interface RailItemProps {
   icon: string;
   activeIcon?: string;
   badge?: number;
+  /**
+   * Overrides the path-derived selection.
+   *
+   * Needed by a row that stands for a *section* of several sibling routes: the aria2
+   * settings row points at one group but has to stay selected for all ten, which
+   * `isNavItemActive(pathname, rowPath)` cannot express.
+   */
+  isActive?: boolean;
   onNavigate: (path: string, event: Event) => void;
 }
 
-function RailItem({ path, label, icon, activeIcon, badge, onNavigate }: RailItemProps) {
+function RailItem({ path, label, icon, activeIcon, badge, isActive, onNavigate }: RailItemProps) {
   const ref = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
-  const active = isNavItemActive(pathname, path);
+  const active = isActive ?? isNavItemActive(pathname, path);
 
   useMduiEvent(ref, 'click', (_detail, event) => {
     onNavigate(path, event);
@@ -133,13 +142,22 @@ export function NavigationRail() {
     return Number.isFinite(value) ? value : 0;
   };
 
-  const value = NAV_DOWNLOAD_ENTRIES.find((entry) => isNavItemActive(pathname, entry.path))?.path ??
-    NAV_SETTINGS_ENTRIES.filter((entry) => entry.type === 'link')
-      .find((entry) => isNavItemActive(pathname, entry.path))?.path;
-
   const singleHopSettings = NAV_SETTINGS_ENTRIES.filter(
-    (entry) => entry.type === 'link' && (!('debugOnly' in entry) || !entry.debugOnly || debugMode),
+    (entry): entry is NavLink =>
+      entry.type === 'link' && (!('debugOnly' in entry) || !entry.debugOnly || debugMode),
   );
+
+  /**
+   * The rail's selection.
+   *
+   * A rail item is selected by the exact path it points at, so the aria2 settings
+   * row has to claim *every* `/settings/aria2/**` path, not just the default group.
+   * That is what makes the row stay highlighted while the user moves between the
+   * ten groups.
+   */
+  const value = NAV_DOWNLOAD_ENTRIES.find((entry) => isNavItemActive(pathname, entry.path))?.path ??
+    (singleHopSettings.find((entry) => isNavItemActive(pathname, entry.path))?.path ??
+      (isAria2SettingsPath(pathname) ? aria2SettingsSectionRoute : undefined));
 
   return (
     <mdui-navigation-rail value={value} alignment="start" divider>
@@ -157,8 +175,26 @@ export function NavigationRail() {
         />
       ))}
 
-      {singleHopSettings.map((entry) =>
-        entry.type === 'link' ? (
+      {/*
+        The aria2 settings section gets its own rail row.
+
+        `NAV_SETTINGS_ENTRIES` models it as a `collapse`, because that is how AriaNg's
+        sidebar shows it and how this app's drawer still shows it. A rail row cannot
+        be a collapse, though — and *not* having it was why the whole section read as
+        missing on any viewport wide enough to show the rail: the ten groups existed
+        only inside the drawer, behind the hamburger and a closed accordion. The row
+        points at the first group; the page's own switcher takes it from there.
+      */}
+      <RailItem
+        path={aria2SettingsSectionRoute}
+        label={t('Aria2 Settings')}
+        icon="tune"
+        activeIcon="outline:tune"
+        isActive={isAria2SettingsPath(pathname)}
+        onNavigate={onNavigate}
+      />
+
+      {singleHopSettings.map((entry) => (
           <RailItem
             key={entry.path}
             path={entry.path}
@@ -167,8 +203,7 @@ export function NavigationRail() {
             activeIcon={`outline:${entry.icon}`}
             onNavigate={onNavigate}
           />
-        ) : null,
-      )}
+      ))}
     </mdui-navigation-rail>
   );
 }

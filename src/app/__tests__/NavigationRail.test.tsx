@@ -37,6 +37,7 @@ import type { ComponentProps } from 'react';
 import { NAV_DOWNLOAD_ENTRIES, NAV_SETTINGS_ENTRIES } from '../shell/NavigationDrawer';
 import type { NavLink } from '../shell/NavigationDrawer';
 import { NavigationRail } from '../shell/NavigationRail';
+import { aria2SettingsRoute, aria2SettingsSectionRoute } from '../route-paths';
 
 type HistoryRouterHistory = ComponentProps<typeof HistoryRouter>['history'];
 
@@ -81,19 +82,27 @@ function singleHopSettings(): NavLink[] {
 /**
  * The rows the rail is expected to render, in the order it renders them.
  *
- * Matched positionally rather than by label: comparing against a translated
- * string would mean calling `useTranslate` from outside a component, and
- * `value` / `href` are written as DOM properties by React 19, so neither is
- * readable from the attribute map.
+ * The aria2 settings section sits between the task lists and the other settings
+ * links — it is the one `NAV_SETTINGS_ENTRIES` models as a `collapse`, so the rail
+ * carries it as a plain row pointing at the first group.
+ *
+ * Matched positionally rather than by label: comparing against a translated string
+ * would mean calling `useTranslate` from outside a component, and `value` / `href`
+ * are written as DOM properties by React 19, so neither is readable from the
+ * attribute map.
  */
-function expectedRows(): NavLink[] {
-  return [...NAV_DOWNLOAD_ENTRIES, ...singleHopSettings()];
+function expectedPaths(): string[] {
+  return [
+    ...NAV_DOWNLOAD_ENTRIES.map((entry) => entry.path),
+    aria2SettingsSectionRoute,
+    ...singleHopSettings().map((entry) => entry.path),
+  ];
 }
 
 /** The row for `path`, by position. */
 function rowFor(container: HTMLElement, path: string): Element {
   const rows = railItems(container);
-  const index = expectedRows().findIndex((entry) => entry.path === path);
+  const index = expectedPaths().indexOf(path);
   const row = index >= 0 ? rows[index] : undefined;
   if (!row) throw new Error(`no rail row for ${path}`);
   return row;
@@ -105,7 +114,7 @@ describe('NavigationRail icons', () => {
     // The rail is deliberately shallower than the drawer: only the single-hop
     // settings links appear here, the ten aria2 option groups live behind the
     // rail's menu button in the drawer.
-    expect(railItems(container).length).toBe(NAV_DOWNLOAD_ENTRIES.length + singleHopSettings().length);
+    expect(railItems(container).length).toBe(expectedPaths().length);
   });
 
   it('projects the icon into the icon slot, never the attribute', () => {
@@ -162,7 +171,7 @@ describe('NavigationRail icons', () => {
 
   it('still links each row to its hash-bang URL', () => {
     const { container } = renderRail();
-    for (const { path } of expectedRows()) {
+    for (const path of expectedPaths()) {
       // `href` is read as a property: React 19 writes it as one on a custom
       // element, so it is not in the attribute map.
       const row = rowFor(container, path) as Element & { href?: string };
@@ -174,5 +183,25 @@ describe('NavigationRail icons', () => {
     const { container } = renderRail(`#!${RoutePaths.Waiting}`);
     expect(rowFor(container, RoutePaths.Waiting).getAttribute('aria-current')).toBe('page');
     expect(rowFor(container, RoutePaths.Downloading).hasAttribute('aria-current')).toBe(false);
+  });
+
+  it('carries a row for the aria2 settings section, between the lists and settings', () => {
+    const { container } = renderRail();
+    const labels = railItems(container).map((item) => item.getAttribute('aria-label'));
+
+    expect(labels).toContain('Aria2 Settings');
+    // Position is the point: the section row must not displace the other settings
+    // links, which the positional match in `rowFor` also relies on.
+    expect(labels.indexOf('Aria2 Settings')).toBe(NAV_DOWNLOAD_ENTRIES.length);
+  });
+
+  it('keeps the aria2 section row selected on every group', () => {
+    for (const group of ['basic', 'http-ftp-sftp', 'bt', 'ed2k', 'advanced'] as const) {
+      const { container } = renderRail(`#!${aria2SettingsRoute(group)}`);
+      const selected = railItems(container)
+        .filter((item) => item.hasAttribute('aria-current'))
+        .map((item) => item.getAttribute('aria-label'));
+      expect(selected, group).toEqual(['Aria2 Settings']);
+    }
   });
 });

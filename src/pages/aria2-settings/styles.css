@@ -13,6 +13,26 @@
   min-width: 0;
 }
 
+/*
+ * Wide layout: the group switcher becomes a fixed-width column beside the options.
+ * `--compact` (below `md`) leaves the column direction alone, so the switcher sits
+ * above the list and scrolls horizontally.
+ */
+@media (min-width: 840px) {
+  .aria2-settings:not(.aria2-settings--compact) {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .aria2-settings:not(.aria2-settings--compact) .aria2-settings__main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+}
+
 /* ---- sticky header ----------------------------------------------------- */
 
 .aria2-settings__header {

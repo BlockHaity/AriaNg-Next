@@ -42,7 +42,7 @@ import { unstable_HistoryRouter as HistoryRouter, useLocation, useNavigate } fro
 import type { ComponentProps } from 'react';
 
 import { I18nProvider } from '@/i18n';
-import { DEFAULT_ROUTE, Routes as RoutePaths, aria2SettingsRoute } from '../route-paths';
+import { DEFAULT_ARIA2_GROUP, DEFAULT_ROUTE, Routes as RoutePaths, aria2SettingsRoute } from '../route-paths';
 import { createHashBangHistory } from '../hash-history';
 import { AppShell } from '../shell';
 import type { NormalizedTask } from '@/domain/types';
@@ -602,5 +602,72 @@ describe('AppShell theme switch', () => {
     window.removeEventListener('themechange', listener);
 
     expect(seen).toContain('dark');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* aria2 settings reachability                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * "The Aria2 settings section is completely missing."
+ *
+ * The section was never absent from the code — the page, the route and all ten
+ * groups were there. What was missing was a way to *get to* it: `NAV_SETTINGS_ENTRIES`
+ * models the section as a `collapse`, which is AriaNg's sidebar layout and is still
+ * how the drawer renders it, but from the `md` breakpoint upwards the primary
+ * navigation is `<mdui-navigation-rail>` and the rail renders `link` entries only.
+ * So on a desktop-width window the ten groups existed solely behind the rail's
+ * hamburger *and* a closed accordion.
+ *
+ * The old assertion above cannot catch that: it reads hrefs out of the DOM, and a
+ * collapsed accordion's children are in the DOM either way. These assert the rail
+ * itself, which is the surface that was wrong.
+ */
+describe('aria2 settings reachability', () => {
+  function renderRail() {
+    setViewport(1024); // ≥ md, so the rail is the primary navigation
+    const { container } = renderShell();
+    return container.querySelector('mdui-navigation-rail')!;
+  }
+
+  it('gives the rail its own aria2 settings row', () => {
+    const rail = renderRail();
+    const rows = [...rail.querySelectorAll('mdui-navigation-rail-item')];
+    const labels = rows.map((row) => row.getAttribute('aria-label'));
+
+    expect(labels).toContain('Aria2 Settings');
+  });
+
+  it('points that row at the first group, not at a drawer-only disclosure', () => {
+    const rail = renderRail();
+    const row = [...rail.querySelectorAll('mdui-navigation-rail-item')].find(
+      (item) => item.getAttribute('aria-label') === 'Aria2 Settings',
+    )!;
+
+    const href = (row as Element & { href?: string }).href ?? row.getAttribute('href');
+    expect(href).toBe(`#!${aria2SettingsRoute(DEFAULT_ARIA2_GROUP)}`);
+  });
+
+  it('keeps that row selected for every group, not just the default', () => {
+    for (const group of OPTION_GROUP_ROUTES) {
+      const { container } = renderShell(`#!${aria2SettingsRoute(group)}`);
+      const rail = container.querySelector('mdui-navigation-rail')!;
+      const selected = [...rail.querySelectorAll('mdui-navigation-rail-item')]
+        .filter((item) => item.hasAttribute('aria-current'))
+        .map((item) => item.getAttribute('aria-label'));
+
+      expect(selected, `group ${group} selected ${JSON.stringify(selected)}`).toEqual(['Aria2 Settings']);
+    }
+  });
+
+  it('does not claim the row for unrelated routes', () => {
+    const { container } = renderShell(`#!${RoutePaths.Downloading}`);
+    const rail = container.querySelector('mdui-navigation-rail')!;
+    const selected = [...rail.querySelectorAll('mdui-navigation-rail-item')]
+      .filter((item) => item.hasAttribute('aria-current'))
+      .map((item) => item.getAttribute('aria-label'));
+
+    expect(selected).not.toContain('Aria2 Settings');
   });
 });

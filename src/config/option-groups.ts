@@ -276,6 +276,50 @@ export function getGlobalOptionKeys(group: string): string[] | false {
  * else, matching AriaNg. A rule is read-only when `canUpdate` does not list the
  * current context.
  */
+/* ------------------------------------------------------------------ */
+/* presentation metadata                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The navigation title of each group, as an i18n key.
+ *
+ * `ARIA2_GLOBAL_GROUPS[group].labelKey` points into an `optionGroup.*` namespace
+ * the shipped translation bundles do not carry, so translating it would render the
+ * raw key. AriaNg's own navigation titles ("Basic Settings", "HTTP/FTP/SFTP
+ * Settings", …) *are* in every bundle and are the strings users recognise, so they
+ * are used instead. The two aria2-next groups have no upstream title yet and get a
+ * plain English one, which `t()` renders verbatim.
+ *
+ * Lives here, not in the drawer, because the nav collapse, the rail entry and the
+ * settings page's own group switcher all need it and must not disagree.
+ */
+export const ARIA2_GROUP_TITLE_KEYS: Readonly<Record<OptionGroupRoute, string>> = {
+  basic: 'Basic Settings',
+  'http-ftp-sftp': 'HTTP/FTP/SFTP Settings',
+  http: 'HTTP Settings',
+  'ftp-sftp': 'FTP/SFTP Settings',
+  bt: 'BitTorrent Settings',
+  ed2k: 'ED2K Settings',
+  media: 'Media Settings',
+  metalink: 'Metalink Settings',
+  rpc: 'RPC Settings',
+  advanced: 'Advanced Settings',
+};
+
+/** Icons per group, chosen to stay inside the app's imported icon set. */
+export const ARIA2_GROUP_ICONS: Readonly<Record<OptionGroupRoute, string>> = {
+  basic: 'tune',
+  'http-ftp-sftp': 'public',
+  http: 'language',
+  'ftp-sftp': 'folder-open',
+  bt: 'hub',
+  ed2k: 'bolt',
+  media: 'movie',
+  metalink: 'link',
+  rpc: 'dns',
+  advanced: 'terminal',
+};
+
 export function getTaskOptionKeys(
   context: TaskOptionContext,
   isBittorrent: boolean,
