@@ -96,9 +96,12 @@ jobs:
           node -e '
             const fs = require("node:fs");
             const html = fs.readFileSync("dist-single/index.html", "utf8");
+            // Flag external references to the apps own build output (scripts or
+            // stylesheets). The Material Icons webfont fallback in the source
+            // template is a deliberate, non-blocking CDN link and is excluded.
             const external = [
               ...html.matchAll(/<script\b[^>]*\bsrc\s*=/gi),
-              ...html.matchAll(/<link\b[^>]*\brel\s*=\s*["\x27]?stylesheet/i),
+              ...html.matchAll(/<link\b[^>]*\bhref\s*=\s*["\x27][^"\x27]*assets\//gi),
             ];
             if (external.length > 0) {
               for (const match of external) console.error(match[0]);
