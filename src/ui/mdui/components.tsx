@@ -17,8 +17,8 @@
  *    functions) go through `useMduiProperty` / `useMduiModel` instead.
  */
 
-import { cloneElement, createElement, useCallback, useEffect, useRef } from 'react';
-import type { CSSProperties, ReactElement, ReactNode } from 'react';
+import { createElement, useCallback, useEffect, useRef } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useMduiEvent, useMduiModel, useMduiProperty } from './use-mdui';
 import { hasIcon, icon } from './icons';
 
@@ -1397,7 +1397,28 @@ export function MduiDropdown(props: MduiDropdownProps) {
       close-delay={closeDelay}
       trigger="click"
     >
-      {cloneElement(trigger as ReactElement<{ slot?: string }>, { slot: 'trigger' })}
+      {/*
+        The trigger is wrapped rather than cloned with a `slot` prop.
+
+        `mdui-dropdown` finds its trigger with
+        `queryAssignedElements({ slot: 'trigger' })[0]` and then calls
+        `getOverflowAncestors(triggerElement)` in `connectedCallback`. That throws
+        "Cannot read properties of undefined (reading 'assignedSlot')" when the slot
+        is empty.
+
+        Cloning the trigger with `slot: 'trigger'` only worked for a raw
+        `<mdui-button slot="trigger">`. The wrappers deliberately take a fixed prop
+        set (`Styleable` is just `className` + `style`), so the extra prop was dropped
+        on the floor, the trigger fell into the default slot, and every dropdown built
+        from `MduiButton` / `MduiIconButton` crashed on mount — which is all of them
+        except the one place that had already worked around it with a raw tag.
+
+        The wrapper owns the slot, so it works with any trigger. `inline-flex` keeps it
+        behaving like the button it wraps in both a flex row and inline flow.
+      */}
+      <span slot="trigger" style={{ display: 'inline-flex' }}>
+        {trigger}
+      </span>
       {items}
     </mdui-dropdown>
   );

@@ -26,7 +26,14 @@ import type {
   TransportConnectionHandlers,
   TransportHandlers,
 } from './types';
-import { base64Encode, isRecord, RPC_CONNECT_ERROR, RPC_HTTP_TIMEOUT_MS, withSecretToken } from './types';
+import {
+  base64Encode,
+  isRecord,
+  RPC_CONNECT_ERROR,
+  RPC_HTTP_TIMEOUT_MS,
+  RPC_HTTP_UNREACHABLE,
+  withSecretToken,
+} from './types';
 
 export interface HttpTransportOptions extends TransportConnectionHandlers {
   profile: RpcProfile;
@@ -148,9 +155,18 @@ export class HttpRpcTransport implements ManagedRpcTransport {
     void this.#fetch(url, init)
       .then((response) => this.#handleResponse(response, request, handlers))
       .catch(() => {
-        // Network error, CORS rejection or timeout — AriaNg's `$http` reject
-        // branch, which synthesised the very same "Cannot connect" message.
-        this.#reportConnectFailure(handlers, request.id);
+        // Network error, CORS rejection or timeout — AriaNg's `$http` reject branch,
+        // which synthesised the very same "Cannot connect" message. That message says
+        // nothing actionable, so the abort (our own timeout) is still reported as it
+        // was and everything else becomes {@link RPC_HTTP_UNREACHABLE}, which at least
+        // names both causes and both fixes. See the constant for why they cannot be
+        // told apart.
+        this.#reportConnectFailure(
+          handlers,
+          request.id,
+          undefined,
+          controller.signal.aborted ? RPC_CONNECT_ERROR : RPC_HTTP_UNREACHABLE,
+        );
       })
       .finally(() => {
         if (timer !== null) clearTimeout(timer);
@@ -232,14 +248,19 @@ export class HttpRpcTransport implements ManagedRpcTransport {
     handlers.onResult(payload);
   }
 
-  #reportConnectFailure(handlers: TransportHandlers, requestId: string, status?: number): void {
+  #reportConnectFailure(
+    handlers: TransportHandlers,
+    requestId: string,
+    status?: number,
+    message: string = RPC_CONNECT_ERROR,
+  ): void {
     this.#connected = false;
-    handlers.onError({ message: RPC_CONNECT_ERROR }, requestId);
+    handlers.onError({ message }, requestId);
     // The HTTP status is forwarded as the close "code" — AriaNg had no place to
     // show it, but "404" vs "0 (offline)" is the single most useful diagnostic
     // on the settings page.
-    this.#onClose?.(status === undefined ? { reason: RPC_CONNECT_ERROR } : { code: status, reason: RPC_CONNECT_ERROR });
-    handlers.onClose(status === undefined ? { reason: RPC_CONNECT_ERROR } : { code: status, reason: RPC_CONNECT_ERROR });
+    this.#onClose?.(status === undefined ? { reason: message } : { code: status, reason: message });
+    handlers.onClose(status === undefined ? { reason: message } : { code: status, reason: message });
   }
 }
 

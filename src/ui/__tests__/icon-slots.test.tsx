@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MduiButton,
   MduiChip,
+  MduiDropdown,
   MduiFab,
   MduiIconButton,
   MduiListItem,
@@ -273,5 +274,66 @@ describe('the SVG icon set is complete', () => {
       expect(customElements.get(tag), `outline:${name} → <${tag}> is not registered`).toBeDefined();
       expect(hasIcon(`outline:${name}`)).toBe(true);
     }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* the dropdown trigger slot                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `mdui-dropdown` resolves its trigger with
+ * `queryAssignedElements({ slot: 'trigger' })[0]` and then calls
+ * `getOverflowAncestors(triggerElement)` in `connectedCallback`, which dereferences
+ * `element.assignedSlot`. An empty trigger slot therefore crashes the component on
+ * mount:
+ *
+ *     TypeError: Cannot read properties of undefined (reading 'assignedSlot')
+ *
+ * The wrappers take a fixed prop set (`Styleable` is `className` + `style`), so
+ * cloning a trigger with `slot: 'trigger'` dropped the prop and every dropdown built
+ * from `MduiButton` / `MduiIconButton` hit it. The wrapper owns the slot now, so the
+ * trigger can be anything.
+ */
+describe('MduiDropdown puts the trigger in the trigger slot itself', () => {
+  function triggerSlotHost(container: HTMLElement): Element {
+    const host = container.querySelector('mdui-dropdown');
+    if (!host) throw new Error('no mdui-dropdown rendered');
+    return host;
+  }
+
+  it('projects a wrapped MduiIconButton trigger into the slot', () => {
+    const { container } = render(
+      <MduiDropdown trigger={<MduiIconButton icon="menu" label="Menu" />} items={[]} />,
+    );
+    const host = triggerSlotHost(container);
+    const slot = host.querySelector('[slot="trigger"]')!;
+
+    expect(slot).not.toBeNull();
+    expect(slot.querySelector('mdui-button-icon')).not.toBeNull();
+  });
+
+  it('projects a wrapped MduiButton trigger into the slot', () => {
+    const { container } = render(<MduiDropdown trigger={<MduiButton>Go</MduiButton>} items={[]} />);
+    expect(triggerSlotHost(container).querySelector('[slot="trigger"] mdui-button')).not.toBeNull();
+  });
+
+  it('projects a raw custom element trigger into the slot', () => {
+    const { container } = render(
+      <MduiDropdown trigger={<mdui-button-icon icon="menu" />} items={[]} />,
+    );
+    expect(triggerSlotHost(container).querySelector('[slot="trigger"] mdui-button-icon')).not.toBeNull();
+  });
+
+  it('keeps the menu items outside the trigger slot', () => {
+    const { container } = render(
+      <MduiDropdown
+        trigger={<MduiIconButton icon="menu" label="Menu" />}
+        items={[<mdui-menu key="m" />]}
+      />,
+    );
+    const slot = triggerSlotHost(container).querySelector('[slot="trigger"]')!;
+    expect(slot.querySelector('mdui-menu')).toBeNull();
+    expect(triggerSlotHost(container).querySelector('mdui-menu')).not.toBeNull();
   });
 });

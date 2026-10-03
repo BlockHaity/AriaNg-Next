@@ -76,6 +76,19 @@ export const ARIA2_NEXT_UI_STRINGS: Record<string, string> = {
  * AriaNg never had. Descriptions deliberately explain what changed rather than
  * restating the option name — that is the only information the user lacks.
  */
+export const ARIA2_NEXT_RPC_STRINGS: Record<string, string> = {
+  /*
+   * AriaNg's catalogue only defines `rpc.error.unauthorized`, so every other
+   * `rpc.error.*` key `RPC_ERROR_HINTS` can produce resolves to itself. The tip has to
+   * name both causes and both fixes, because the browser makes them indistinguishable:
+   * a CORS rejection and a refused connection are both an opaque `TypeError` from
+   * `fetch`.
+   */
+  // `Connect` has no AriaNg key; the five status strings it sits next to all do.
+  'Connect': 'Connect',
+  'rpc.error.httpUnreachable': 'The browser could not reach aria2. Either aria2 is not running, or the page and the RPC url are on different origins — aria2 sends no CORS headers and has no option to, so an http:// RPC url cannot be called cross-origin. Use a ws:// RPC url (websockets are not subject to CORS), or serve this page from the same origin as aria2.',
+};
+
 export const ARIA2_NEXT_CONF_STRINGS: Record<string, string> = {
   'Export aria2.conf': '导出 aria2.conf',
   'aria2.conf data': 'aria2.conf 内容',
@@ -376,6 +389,7 @@ export const ARIA2_NEXT_OPTION_STRINGS: Record<string, string> = {
 export const ARIA2_NEXT_STRINGS: Record<string, string> = {
   ...ARIA2_NEXT_UI_STRINGS,
   ...ARIA2_NEXT_CONF_STRINGS,
+  ...ARIA2_NEXT_RPC_STRINGS,
   ...Object.fromEntries(
     Object.entries(ARIA2_NEXT_OPTION_STRINGS).map(([key, value]) => [
       key.endsWith('.description') ? `options.${key}` : `options.${key}.name`,

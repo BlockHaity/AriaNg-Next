@@ -16,6 +16,7 @@ export {
 export type { AppShellProps } from './AppShell';
 
 export { ConnectionBanner } from './ConnectionBanner';
+export { ConnectButton } from './ConnectButton';
 export { buildChartOption, CHART_HEIGHT, CHART_WIDTH, GlobalSpeedChart } from './GlobalSpeedChart';
 export type { GlobalSpeedChartProps } from './GlobalSpeedChart';
 export {

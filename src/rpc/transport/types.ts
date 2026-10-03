@@ -119,6 +119,23 @@ export const RPC_PROFILE_CHANGED = 'RPC profile changed';
 /** aria2 constants `httpRequestTimeout: 20000`. */
 export const RPC_HTTP_TIMEOUT_MS = 20_000;
 
+/**
+ * AriaNg-Next: the `fetch` promise rejected outright.
+ *
+ * A distinct message from {@link RPC_CONNECT_ERROR} because the two have completely
+ * different fixes, and `RPC_CONNECT_ERROR` says nothing actionable.
+ *
+ * When a browser refuses a cross-origin `fetch`, it rejects with an opaque
+ * `TypeError` and the console shows only "blocked by CORS policy". aria2 sends **no**
+ * `Access-Control-Allow-Origin` header at all and has no option to, so an `http://`
+ * RPC url on a different origin than the page can never work — and the rejection is
+ * byte-for-byte indistinguishable from the daemon simply not running. JavaScript
+ * cannot tell the two apart, so one message has to cover both and name both remedies:
+ * switch the protocol to `ws://` (websockets are not subject to CORS), or serve the
+ * page from the same origin as the RPC endpoint.
+ */
+export const RPC_HTTP_UNREACHABLE = 'Cannot reach aria2 over HTTP from this page!';
+
 /* ------------------------------------------------------------------ */
 /* Small shared helpers                                                */
 /* ------------------------------------------------------------------ */

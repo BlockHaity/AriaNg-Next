@@ -9,6 +9,7 @@
 
 import type { RpcError } from './contract';
 import { RPC_ERROR_UNAUTHORIZED } from '@/config/rpc-constants';
+import { RPC_HTTP_UNREACHABLE } from './transport/types';
 
 /** Used when a failure carries no usable message at all. */
 export const UNKNOWN_RPC_ERROR_MESSAGE = 'Unknown RPC error';
@@ -22,6 +23,7 @@ export const UNKNOWN_RPC_ERROR_MESSAGE = 'Unknown RPC error';
 export const RPC_ERROR_HINTS: Record<string, string> = {
   [RPC_ERROR_UNAUTHORIZED]: 'rpc.error.unauthorized',
   'Cannot connect to aria2!': 'rpc.error.cannotConnect',
+  [RPC_HTTP_UNREACHABLE]: 'rpc.error.httpUnreachable',
   'Bad request': 'rpc.error.badRequest',
   'JSON Parse Error': 'rpc.error.jsonParseError',
   'Secret token mismatch': 'rpc.error.secretTokenMismatch',
@@ -38,6 +40,11 @@ export const RPC_ERROR_HINTS: Record<string, string> = {
  */
 export const RPC_TRANSIENT_ERROR_MESSAGES: readonly string[] = [
   'Cannot connect to aria2!',
+  // Transient in the sense that matters here: the poll that hit it should retry
+  // quietly rather than raise a toast every few seconds. It is not *hidden* — the
+  // connection state carries `lastError`, so the banner and the settings page show
+  // it once with the tip attached.
+  'Cannot reach aria2 over HTTP from this page!',
   'Bad request',
   'JSON Parse Error',
   'Secret token mismatch',

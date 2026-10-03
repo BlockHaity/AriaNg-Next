@@ -170,7 +170,13 @@ export function createScheduler(options: SchedulerOptions = {}): Scheduler {
     }
 
     if (entry.timer === null) {
-      entry.timer = setInterval(tick, entry.intervalMs);
+      // `tick` is bound to its entry rather than passed by name: `setInterval` calls
+      // its callback with *no* arguments, so `setInterval(tick, …)` handed `tick` an
+      // `undefined` entry and the first tick of every poll threw
+      // "Cannot read properties of undefined (reading 'running')". Nothing caught it
+      // — the throw happened inside the interval callback — and there was no test
+      // that actually let a timer fire.
+      entry.timer = setInterval(() => tick(entry), entry.intervalMs);
     }
   };
 

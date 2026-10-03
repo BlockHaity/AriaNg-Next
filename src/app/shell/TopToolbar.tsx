@@ -34,6 +34,7 @@ import { useSettingsStore } from '@/store/settings';
 import { filterTasks, useTasksStore } from '@/store/tasks';
 import { useUiStore } from '@/store/ui';
 import { MduiButton, MduiDropdown, MduiIconButton, MduiMenu, MduiMenuItem, MduiTextField } from '@/ui/mdui';
+import { ConnectButton } from './ConnectButton';
 import { ThemeSwitcher } from './ThemeSwitcher';
 
 /** Where the "Help" button points — AriaNg's own project page. */
@@ -252,6 +253,8 @@ export function TopToolbar() {
 
       <ThemeSwitcher />
       <RpcProfileSwitcher />
+      {/* The manual escape hatch for an endpoint auto-connect cannot fix. */}
+      <ConnectButton />
     </mdui-top-app-bar>
   );
 }

@@ -43,6 +43,20 @@ const SRC = join(REPO_ROOT, 'src');
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'dist-single', '.git']);
 
+/**
+ * Test files are skipped.
+ *
+ * A test that asserts on markup has to *write* markup, including raw elements the
+ * wrappers are supposed to have replaced — `icon-slots.test.tsx` builds a bare
+ * `<mdui-button-icon icon="menu">` precisely to prove `MduiDropdown` copes with a
+ * trigger that is not one of its own wrappers. Flagging that would mean the guard
+ * rejects the regression test for the thing the guard exists to prevent.
+ *
+ * The cost is that a helper inside a test could drift onto the font path unnoticed;
+ * the benefit is that the guard reports only violations in code that actually ships.
+ */
+const TEST_PATH = /(?:^|\/)__tests__\//;
+
 /** Attributes that put an mdui component on the webfont icon path. */
 const FONT_ICON_ATTRS = ['icon', 'end-icon', 'active-icon', 'start-icon', 'selected-icon', 'delete-icon'];
 
@@ -58,7 +72,8 @@ function tsxFiles(dir) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) found.push(...tsxFiles(full));
     else if (entry.isFile() && entry.name.endsWith('.tsx')) {
-      found.push(relative(REPO_ROOT, full).split('\\').join('/'));
+      const path = relative(REPO_ROOT, full).split('\\').join('/');
+      if (!TEST_PATH.test(path)) found.push(path);
     }
   }
   return found.sort();
